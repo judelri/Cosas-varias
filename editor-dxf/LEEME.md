@@ -1,8 +1,8 @@
 # Editor DXF ligero
 
 Una sola página HTML (`editor_dxf.html`) para cambios básicos en planos DXF: mover, girar, copiar y
-borrar entidades y dibujar líneas simples. Tiene el mismo estilo que el Generador de Dashboard. No hace falta instalar nada: se abre con doble clic en Chrome, Edge o Firefox y funciona sin internet
-(sin conexión solo cambia la tipografía).
+borrar entidades y dibujar líneas simples, con el mismo estilo que el Generador de Dashboard.
+No hace falta instalar nada: se abre con doble clic en Chrome, Edge o Firefox y funciona sin internet.
 
 ## Qué hace
 
