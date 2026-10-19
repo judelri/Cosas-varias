@@ -61,7 +61,7 @@ const ICONC={}, ICON={};
   C.piedra=lump("#8a8890"); C.carbon=lump("#3a3640","#15121a",.7); C.hierro=lump("#8a8890","#e0a878",.7);
   C.obsidiana=lump("#2a1d3a","#8a5ab8",.86); C.corrupta=lump("#6a3a80","#2a1638",.75);
   C.cuarzo=crystal("#ece7da"); C.chispa=crystal("#59d0d6");
-  C.ceniza=dust("#6d6178","#b4a2c4"); C.sal=dust("#e9e6df","#ffffff");
+  C.ceniza=dust("#6d6178","#b4a2c4"); C.sal=dust("#e9e6df","#ffffff"); C.polvo=dust("#e8c85a","#fff6c0");
   C.agua=drop("#4f8ad6");
   C.ambar=mk((x,y)=>((x-8)/5)**2+((y-8.5)/5.6)**2<1,(x,y)=>(x-6.5)**2+(y-6.5)**2<2?"#fff1b8":sh("#e8a33a",1.15-(y-3)/16));
   C.semilla=mk((x,y)=>[[5,10.5,1],[10.5,5.5,-1],[11,12,1]].some(([a,b,r])=>{ const u=(x-a)*.7+(y-b)*.7*r, v=-(x-a)*.7*r+(y-b)*.7; return (u/3)**2+(v/1.9)**2<1; }),(x,y)=>sh("#b8904e",1.05+((x+y)%4<1?.2:0)));

@@ -6,6 +6,16 @@ Pica recursos, escanéalos para descubrir sus esencias, investiga las recetas en
 
 Corre en el navegador con [three.js r128](https://threejs.org/), incluido en `js/vendor/`. **Funciona sin internet**: las tipografías también van en la carpeta. No necesita build ni dependencias.
 
+## Criaturas
+
+- **Gallinas** en los prados: sueltan plumas (para investigar) y a veces semillas. Huyen si las golpeas.
+- **Polillas de luz**, solo de noche: revolotean brillando y sueltan **Polvo de luz** (Luz y Céfiro).
+- **Sombras de bruma**, hostiles: salen de noche cerca de la Grieta y, con el flux en 50 o más, también de día.
+  Te persiguen; si te alcanzan se llevan un material de la mochila, suben el flux y se deshacen. Cuatro golpes las
+  deshacen antes. No entran al taller (es un refugio) y se disuelven al amanecer.
+
+Se golpean apuntando y picando; escanear una criatura muestra lo que suelta.
+
 ## Ejecutar
 
 Abre `index.html` en el navegador, o sirve la carpeta:
@@ -29,6 +39,7 @@ Si el sistema pregunta si permite conexiones entrantes para Python, hay que acep
 
 - Juegan **en equipo**: comparten el mundo, la mochila, los bloques, el crisol, el flux, las recetas investigadas y la hora del día.
   Cada uno ve a los demás como un personaje con su nombre y color, y le llegan avisos de lo que forjan o descubren.
+  Las criaturas también son las mismas para todos.
 - La partida se guarda en `partida-equipo.json`, en el equipo del servidor. `python3 tools/servidor.py --nueva` empieza de cero;
   `python3 tools/servidor.py 8080` usa otro puerto.
 - Si se corta la conexión, el juego reintenta solo. La partida de un jugador (abriendo `index.html` directamente) no se toca.
@@ -69,6 +80,7 @@ js/player.js      Jugador, física, raycast, picar/poner/usar/escanear, infusió
 js/ui.js          HUD, paneles y controles
 js/equipo.js      Interruptor del modo equipo (el servidor lo sirve con EQUIPO=true)
 js/net.js         Partida en equipo: sincroniza con el servidor y dibuja a los compañeros
+js/mobs.js        Criaturas: modelos, comportamiento, golpes, botín y sincronización en equipo
 js/main.js        Bucle principal
 js/vendor/        three.js r128 (licencia MIT)
 tools/build.py    Empaqueta todo en un único HTML (de un jugador)

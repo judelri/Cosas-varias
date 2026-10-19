@@ -186,7 +186,8 @@ armG.position.set(ARM_BASE.x,ARM_BASE.y,ARM_BASE.z);
   const sl=new THREE.Mesh(new THREE.BoxGeometry(.165,.165,.22),sleeve); sl.position.z=.22; armI.add(sl);
   const pick=new THREE.Mesh(new THREE.PlaneGeometry(.55,.55),new THREE.MeshBasicMaterial({map:pickTex,alphaTest:.5,side:THREE.DoubleSide}));
   pick.position.set(-.02,.2,-.3); pick.rotation.set(-.2,Math.PI-.55,-.15); armI.add(pick); }
-armG.traverse(o=>{ if(o.material){ o.material.depthTest=false; o.material.fog=false; o.renderOrder=10; worldMats.push({m:o.material,c:o.material.color.clone()}); } });
+// transparente (aunque sea opaco) para dibujarse después del agua y las sombras: el brazo siempre queda delante
+armG.traverse(o=>{ if(o.material){ o.material.depthTest=false; o.material.fog=false; o.material.transparent=true; o.renderOrder=10; worldMats.push({m:o.material,c:o.material.color.clone()}); } });
 // swing: avance del golpe (0 = quieto, 0..1 = golpeando); bobA: cuánto se balancea el brazo al caminar
 let swing=0, walkPh=0, moveAmt=0, bobA=0;
 const swingStart=()=>{ if(swing===0||swing>.6) swing=1e-4; };

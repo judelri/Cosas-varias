@@ -2,7 +2,7 @@
 // Script clásico (sin módulos): comparte el ámbito global con los demás archivos de js/.
 
 /* ================= Jugador ================= */
-const P = Object.assign({x:24.5,y:8,z:27.5,yaw:0,pitch:-.12}, S.player||{}); P.vy=0; P.ground=false;
+const P = Object.assign({x:24.5,y:8,z:27.5,yaw:0,pitch:-.12}, S.player||{}); P.vy=0; P.ground=false; P.kx=0; P.kz=0;
 const RAD=.3, HT=1.75, EYE=1.6;
 function solidAt(x,y,z){ const id=getB(x,y,z); return id===-1 || (id>0 && !B[id].water && !B[id].plant); }
 function collides(px,py,pz){
@@ -26,7 +26,7 @@ function raycast(){
   let t=0, px=x, py=y, pz=z;
   while(t<=5.5){
     const id=getB(x,y,z);
-    if(id>0 && !(id===5&&inW)) return {x,y,z,id,px,py,pz};
+    if(id>0 && !(id===5&&inW)) return {x,y,z,id,px,py,pz,t};
     if(id===-1) return null;
     px=x; py=y; pz=z;
     if(tmx<tmy){ if(tmx<tmz){ x+=sx;t=tmx;tmx+=tdx; } else { z+=sz;t=tmz;tmz+=tdz; } }
@@ -72,6 +72,7 @@ function doUse(){
 }
 function doScan(){
   if(panel) return;
+  if(targetMob){ scanItems(MOB[targetMob.type].drop.map(d=>d[0])); hud(); save(); return; } // escanear una criatura enseña lo que suelta
   if(!target){ pick("Apunta a un bloque para escanearlo."); return; }
   const b=B[target.id];
   if(b.custom||b.use){ pick("Es parte del taller: usa «Usar» para abrirlo."); return; }

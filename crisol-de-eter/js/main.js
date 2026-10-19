@@ -19,7 +19,8 @@ function frame(now){
     const m=Math.hypot(f,s); if(m>1){ f/=m; s/=m; } moveAmt=P.ground?Math.min(1,m):0;
     const inW=getB(Math.floor(P.x),Math.floor(P.y+.4),Math.floor(P.z))===5;
     const sp=inW?2.6:4.4, sy=Math.sin(P.yaw), cy=Math.cos(P.yaw);
-    const vx=(-sy*f+cy*s)*sp, vz=(-cy*f-sy*s)*sp;
+    // kx/kz: empujón (al tocarte una sombra), que se apaga solo
+    const vx=(-sy*f+cy*s)*sp+P.kx, vz=(-cy*f-sy*s)*sp+P.kz; P.kx*=Math.max(0,1-dt*6); P.kz*=Math.max(0,1-dt*6);
     P.vy-=(inW?9:24)*dt; P.vy=Math.max(P.vy,inW?-2.5:-20);
     const jump=keys[" "]||jumpBtn;
     if(jump){ if(P.ground) P.vy=7.6; else if(inW) P.vy=3.2; }
@@ -37,11 +38,14 @@ function frame(now){
   camera.rotation.set(P.pitch,P.yaw,0);
 
   target=panel?null:raycast();
-  if(target){ sel.visible=true; sel.position.set(target.x+.5,target.y+.5,target.z+.5);
+  targetMob=panel?null:mobRay(target?target.t:9); // una criatura delante del bloque tiene prioridad
+  if(targetMob){ const M=MOB[targetMob.type]; sel.visible=false; $("tgtName").textContent=M.n; $("tgtHint").textContent=M.hostile?"¡Hostil! Picar: golpear":"Picar: golpear · Escanear"; }
+  else if(target){ sel.visible=true; sel.position.set(target.x+.5,target.y+.5,target.z+.5);
     const b=B[target.id]; $("tgtName").textContent=b.n;
     $("tgtHint").textContent = b.use ? "Usar: abrir" : b.water ? "Usar: recoger agua" : b.unbreak ? "" : `Picar${b.drop?" · Escanear":""}`;
   } else { sel.visible=false; $("tgtName").textContent=""; $("tgtHint").textContent=""; }
-  if(mining && target && !B[target.id].unbreak && !B[target.id].water && !B[target.id].custom){
+  if(mining&&targetMob){ if(atkCd<=0){ atkCd=.45; attackMob(targetMob); } mine.k=null; mine.p=0; }
+  else if(mining && target && !B[target.id].unbreak && !B[target.id].water && !B[target.id].custom){
     const k=`${target.x},${target.y},${target.z}`; if(mine.k!==k){ mine.k=k; mine.p=0; }
     mine.p+=dt/B[target.id].hard*(has("lente")?2:1);
     if(Math.random()<.3) burst(target.x,target.y,target.z,B[target.id].c,1);
@@ -67,15 +71,15 @@ function frame(now){
   S.time=(S.time+dt/DAY_LEN*(daylight<.5?2:1))%1;
   skyG.position.copy(camera.position); updateSky(); cloudTex.offset.x+=dt*.0015;
   ambient(dt,daylight,Math.hypot(P.x-CRUC[0]-.5,P.z-CRUC[2]-.5)<6,sum(S.cru)>0);
-  updateDrops(dt); netTick(dt);
+  updateDrops(dt); netTick(dt); mobsTick(dt,now);
   // brazo
   walkPh+=dt*moveAmt*9;
   const st=Math.floor(walkPh/Math.PI); if(st!==lastStep){ lastStep=st; const u=getB(Math.floor(P.x),Math.floor(P.y-.05),Math.floor(P.z)); if(u>0) sfx("step",u); }
   // golpe: al picar se repite; al soltar termina la vuelta en curso en vez de saltar a la posición de reposo
-  const swinging=mining&&target&&!panel, prevSw=swing;
+  const swinging=mining&&(target||targetMob)&&!panel, prevSw=swing;
   if(swinging&&swing===0) swing=1e-4;
   if(swing>0){ swing+=dt*2.6; if(swing>=1) swing=swinging?swing-1:0; }
-  if(swinging&&prevSw<.25&&swing>=.25) sfx("hit",target.id); // el golpe suena cuando el pico llega abajo
+  if(swinging&&target&&!targetMob&&prevSw<.25&&swing>=.25) sfx("hit",target.id); // el golpe suena cuando el pico llega abajo
   const sw=swing>0?strike(swing):0;
   bobA+=(moveAmt-bobA)*Math.min(1,dt*8);
   armG.visible=!panel;

@@ -46,7 +46,14 @@ const SFX={
   click(){ tone(900,.03,{type:"square",vol:.02}); },
   bird(){ const f=2200+Math.random()*900, n=2+rnd(3); for(let i=0;i<n;i++) tone(f,.07,{at:i*.11,to:f*1.35,vol:.018}); },
   cricket(){ const f=4300+Math.random()*400; for(let i=0;i<3;i++) tone(f,.025,{at:i*.05,type:"square",vol:.006}); },
-  bubble(){ tone(140+Math.random()*90,.1,{to:360,vol:.03}); }
+  bubble(){ tone(140+Math.random()*90,.1,{to:360,vol:.03}); },
+  // criaturas
+  thud(){ noise(.08,{type:"lowpass",f:700,vol:.26}); tone(150,.08,{type:"triangle",to:90,vol:.1}); },
+  cluck(){ const f=650+Math.random()*120; tone(f,.06,{type:"square",to:f*.75,vol:.025}); tone(f*1.25,.05,{at:.09,type:"square",to:f*.9,vol:.02}); },
+  flutter(){ for(let i=0;i<4;i++) noise(.03,{at:i*.045,f:2600,q:2,vol:.025}); },
+  whisper(){ noise(.9,{f:450,to:950,q:7,vol:.06,att:.25}); },
+  poof(){ noise(.35,{f:1300,to:280,q:1.4,vol:.18}); },
+  chime(){ tone(1568,.35,{vol:.04}); tone(2093,.3,{at:.05,vol:.03}); }
 };
 function sfx(name,...a){ if(!AC||S.mute||AC.state!=="running") return; try { SFX[name](...a); } catch(e) {} }
 // pájaros de día, grillos de noche, burbujas cerca del crisol

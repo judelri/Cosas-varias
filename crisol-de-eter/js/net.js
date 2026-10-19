@@ -94,7 +94,7 @@ const NET_ON={
     if(first){
       // el mundo del equipo empieza del mundo base: se regenera entero
       for(const f of SHARED) S[f]=clone(m.state[f]); NET.base=sharedOf(S);
-      loadWorld(); buildAll(); clearFloaters(); busy=null;
+      loadWorld(); buildAll(); clearFloaters(); busy=null; clearMobs(); // las criaturas del juego solo no pasan al equipo
       let me={}; try { me=JSON.parse(localStorage.getItem(KEY+"-equipo"))||{}; } catch(e) {}
       Object.assign(P,{x:24.5,y:8,z:27.5,yaw:0,pitch:-.12},me.player||{}); P.vy=0;
       if(me.sel) S.sel=me.sel; if(typeof me.mute==="boolean") setMute(me.mute);

@@ -9,8 +9,9 @@ index.html); --nueva la empieza de cero. Solo usa la biblioteca estándar de Pyt
 
 Protocolo (mensajes JSON):
   jugador → servidor  hola {name} · ops {seq, ops} · pos {p, a, ms} · nombre {name} · aviso {text}
+                      mobs {ms, list, ev} (solo el guía) · mobhit {id, k, x, z} (al guía)
   servidor → jugador  bienvenida {id, color, state, players, leader, dirs} · ops {from, ops} · estado {state, ack}
-                      pos {id, p, a, ms} · entra {player} · sale {id} · nombre {id, name} · lider {id} · hora {time} · aviso {id, text}
+                      mobs {ms, list, ev} · mobhit {from, id, k, x, z} · pos {id, p, a, ms} · entra {player} · sale {id} · nombre {id, name} · lider {id} · hora {time} · aviso {id, text}
 Las ops son cambios del estado compartido (ver applyOp en js/net.js, que aplica las mismas reglas que apply_op aquí).
 """
 import base64
@@ -176,6 +177,14 @@ class Game:
             elif t == "pos" and isinstance(msg.get("p"), list) and len(msg["p"]) == 5 and all(isnum(v) for v in msg["p"]) and isnum(msg.get("ms")):
                 c.pos = msg["p"]
                 self.broadcast({"t": "pos", "id": c.id, "p": c.pos, "a": 1 if msg.get("a") else 0, "ms": msg["ms"]}, skip=c)
+            elif t == "mobs" and c.id == self.leader and isinstance(msg.get("list"), list) and len(msg["list"]) <= 64 \
+                    and isinstance(msg.get("ev", []), list) and len(msg.get("ev", [])) <= 32 and isnum(msg.get("ms")):
+                # criaturas: las simula el guía y se reenvían tal cual al resto
+                self.broadcast({"t": "mobs", "ms": msg["ms"], "list": msg["list"], "ev": msg.get("ev", [])}, skip=c)
+            elif t == "mobhit" and c.id != self.leader and self.leader in self.clients and isinstance(msg.get("id"), str) \
+                    and msg.get("k") in ("golpe", "toque") and isnum(msg.get("x", 0)) and isnum(msg.get("z", 0)):
+                self.send(self.clients[self.leader], {"t": "mobhit", "from": c.id, "id": msg["id"][:24], "k": msg["k"],
+                                                      "x": msg.get("x", 0), "z": msg.get("z", 0)})
             elif t == "nombre":
                 c.name = clean_name(msg.get("name")) or c.name
                 self.broadcast({"t": "nombre", "id": c.id, "name": c.name})
