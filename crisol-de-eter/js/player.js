@@ -16,7 +16,7 @@ let panel=null, busy=null, locked=false;
 const isTouch = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
 if(isTouch) document.body.classList.add("touch");
 
-function raycast(){
+function raycast(reach=5.5){
   const o=camera.position, d=new THREE.Vector3(); camera.getWorldDirection(d);
   let x=Math.floor(o.x),y=Math.floor(o.y),z=Math.floor(o.z);
   const sx=Math.sign(d.x),sy=Math.sign(d.y),sz=Math.sign(d.z);
@@ -24,7 +24,7 @@ function raycast(){
   let tmx=sx>0?(x+1-o.x)*tdx:(o.x-x)*tdx, tmy=sy>0?(y+1-o.y)*tdy:(o.y-y)*tdy, tmz=sz>0?(z+1-o.z)*tdz:(o.z-z)*tdz;
   const inW=getB(x,y,z)===5;
   let t=0, px=x, py=y, pz=z;
-  while(t<=5.5){
+  while(t<=reach){
     const id=getB(x,y,z);
     if(id>0 && !(id===5&&inW)) return {x,y,z,id,px,py,pz,t};
     if(id===-1) return null;
@@ -40,10 +40,10 @@ function mineSpeed(b){
   let s=stone?[.3,1,1.5,2.2,3.2][t]:[1,1.15,1.3,1.45,1.8][t]; if(b.tier&&t<b.tier) s=Math.min(s,.3);
   return s*(has("lente")?2:1);
 }
-function breakBlock(t){
+function breakBlock(t,tier=toolTier()){
   const b=B[t.id], k=`${t.x},${t.y},${t.z}`, placed=S.placed[k]; setBlock(t.x,t.y,t.z,0); burst(t.x,t.y,t.z,b.c); S.mined++; sfx("break",t.id); exhaust(.025);
   const got=[];
-  const weak=b.tier&&toolTier()<b.tier; // sin el pico necesario no suelta nada (como Minecraft)
+  const weak=b.tier&&tier<b.tier; // sin el pico necesario no suelta nada (como Minecraft)
   if(weak) pick(`Necesitas un ${ITEMS[TOOLS[b.tier]].n.toLowerCase()} para sacar algo de aquí.`,"f");
   // una antorcha encima se cae con el bloque
   if(getB(t.x,t.y+1,t.z)===TORCH){ setBlock(t.x,t.y+1,t.z,0); delete S.placed[`${t.x},${t.y+1},${t.z}`]; S.bl[TORCH]=(S.bl[TORCH]||0)+1; }
@@ -92,6 +92,40 @@ function doScan(){
   scanItems(its);
   for(let i=0;i<12;i++) spawn(target.x+Math.random(),target.y+Math.random(),target.z+Math.random(),0,.6,0,h2a("#cfa75a"),.8);
   hud(); save();
+}
+
+/* ================= Varita ================= */
+// R lanza el foco elegido con vis del aura; V cambia de foco. Cada lanzamiento puede dejar un poco de flux.
+const FOCI=["foco_chispa","foco_excava","foco_luz"];
+const myFoci=()=>FOCI.filter(has);
+let castCd=0;
+function cycleFocus(){ const f=myFoci(); if(!f.length) return; S.focus=f[(f.indexOf(S.focus)+1)%f.length]; sfx("click"); hud(); save(); }
+// partículas en línea desde la mano hasta el punto
+function beam(to,hex){ const o=camera.position, c=h2a(hex), n=18; for(let i=0;i<n;i++){ const k=i/n; spawn(o.x+(to.x-o.x)*k+(Math.random()-.5)*.08,o.y-.25+(to.y-o.y+.25)*k,o.z+(to.z-o.z)*k+(Math.random()-.5)*.08,0,.2,0,c,.35+k*.3); } }
+function cast(){
+  if(panel||castCd>0||S.hp<=0) return;
+  if(!has("varita")){ pick("Necesitas una varita de éter (mesa arcana)."); return; }
+  if(!has(S.focus)) S.focus=myFoci()[0]||"";
+  if(!S.focus){ pick("La varita no tiene foco: fabrica uno en la mesa arcana."); return; }
+  const F=ITEMS[S.focus].focus; if(S.vis<F.cost){ pick("El aura no tiene vis suficiente: espera a que se recargue.","f"); castCd=.6; return; }
+  const d=new THREE.Vector3(); camera.getWorldDirection(d); const o=camera.position;
+  let ok=false;
+  if(S.focus==="foco_chispa"){
+    const t=raycast(16), m=mobRay(t?t.t:16,16);
+    const end=m?m.g.position.clone().add(new THREE.Vector3(0,MOB[m.type].fly?0:.6,0)):o.clone().add(d.clone().multiplyScalar(t?t.t:16));
+    beam(end,"#f2b13c"); sfx("spark"); burst(end.x-.5,end.y-.5,end.z-.5,"#e0743c",10);
+    if(m) attackMob(m,2); ok=true;
+  } else if(S.focus==="foco_excava"){
+    const t=raycast(10); const b=t&&B[t.id];
+    if(!t||b.unbreak||b.water||b.custom){ pick("Apunta a un bloque que se pueda romper (hasta 10 bloques)."); castCd=.4; return; }
+    beam({x:t.x+.5,y:t.y+.5,z:t.z+.5},"#a8935c"); breakBlock(t,Math.max(3,toolTier())); ok=true;
+  } else {
+    const t=raycast(10); let c;
+    if(t) c=[t.px,t.py,t.pz]; else { const e=o.clone().add(d.clone().multiplyScalar(6)); c=[Math.floor(e.x),Math.floor(e.y),Math.floor(e.z)]; }
+    if(getB(...c)!==0||inBody(...c)){ pick("Ahí no cabe un orbe de luz."); castCd=.4; return; }
+    beam({x:c[0]+.5,y:c[1]+.5,z:c[2]+.5},"#f2d36b"); setBlock(...c,ORB); sfx("chime"); ok=true;
+  }
+  if(ok){ S.vis-=F.cost; castCd=.5; swingStart(); if(Math.random()<.25) addFlux(1,"residuo de vis"); hud(); save(); }
 }
 
 /* ================= Vida y hambre ================= */

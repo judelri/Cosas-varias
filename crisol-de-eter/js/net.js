@@ -7,7 +7,7 @@
 // más lo ya enviado) y se mandan ops. Mismas reglas que apply_op en tools/servidor.py:
 //   n: número que suma · m: cantidad por clave (se borra al llegar a 0) · s: valor por clave (gana el último)
 //   u: lista sin repetidos · v: valor entero (gana el último)
-const SH={n:["flux","mined","rifts","fuel"],m:["inv","cru","bl"],s:["world","placed","resp"],u:["scanned","res"],v:["won","rsch"]};
+const SH={n:["flux","mined","rifts","fuel","vis"],m:["inv","cru","bl"],s:["world","placed","resp"],u:["scanned","res"],v:["won","rsch"]};
 const SHARED=Object.values(SH).flat();
 const NET={ws:null,id:0,color:"",leader:false,base:null,seq:0,pending:[],players:{},dirs:[],up:false,ever:false,sendT:0,tErr:0,panelT:0,panelDirty:false};
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -144,10 +144,11 @@ function addAvatar(p){
   const legL=part(.24,.7,.24,pants,-.12,.35,0,.7), legR=part(.24,.7,.24,pants,.12,.35,0,.7);
   part(.48,.65,.26,shirt,0,1.025,0,1.025);
   const armL=part(.2,.62,.2,shirt,-.34,1.04,0,1.33), armR=part(.2,.62,.2,shirt,.34,1.04,0,1.33);
-  const head=new THREE.Mesh(new THREE.BoxGeometry(.44,.44,.44),[skin,skin,hair,skin,hair,lam({map:FACE})]); head.position.y=1.57; g.add(head);
+  const face=lam({map:FACE}), head=new THREE.Mesh(new THREE.BoxGeometry(.44,.44,.44),[skin,skin,hair,skin,hair,face]); head.position.y=1.57; g.add(head);
   const label=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthTest:false,fog:false})); label.position.y=2.1; label.renderOrder=5; g.add(label);
   scene.add(g);
   const a=NET.players[p.id]={id:p.id,name:p.name,color:p.color,g,head,legL,legR,armL,armR,label,target:p.p,a:0,
+    mats:[skin,shirt,pants,hair,face].map(m=>({m,c:m.color.clone()})),
     buf:[],off:0,vis:0,ph:0,sw:0,armRx:0};
   setLabel(a); g.visible=!!p.p;
 }
@@ -169,7 +170,7 @@ function updateAvatars(dt,now){
   for(const a of Object.values(NET.players)){
     const q=a.buf.length?sampleAt(a.buf,now-a.off-LAG):a.target; if(!q){ a.g.visible=false; continue; }
     const g=a.g, ox=g.position.x, oz=g.position.z, first=!g.visible;
-    g.visible=true; g.position.set(q[0],q[1],q[2]); g.rotation.y=q[3]; a.head.rotation.x=q[4]*.8;
+    g.visible=true; g.position.set(q[0],q[1],q[2]); g.rotation.y=q[3]; a.head.rotation.x=q[4]*.8; shadeMats(a.mats,q[0],q[1],q[2]); // en cuevas, más oscuro
     // pasos según lo que de verdad se movió en este fotograma, suavizado
     const sp=first?0:Math.hypot(q[0]-ox,q[2]-oz)/Math.max(dt,1e-3), s=Math.min(1,dt*10);
     a.vis+=(Math.min(sp,5)-a.vis)*s; a.ph+=dt*a.vis*2.4;

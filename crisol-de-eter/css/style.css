@@ -34,6 +34,12 @@ h3{color:var(--brass);font-size:1.1rem}
 .lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:var(--flux)}
 .bar{position:relative;height:8px;border-radius:4px;background:var(--panel2);overflow:hidden}
 .bar>i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#7d3d8a,var(--flux));transition:width .4s}
+.visrow{margin-top:4px}.visrow .lbl{color:#59d0d6}.visrow .bar>i{background:linear-gradient(90deg,#2e7a8a,#59d0d6)}
+.chip.vis{color:#9fe8ee;border-color:#2e7a8a}
+.focus{left:50%;bottom:calc(98px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#17141cc0;border:1px solid #2e7a8a;border-radius:8px;padding:3px 10px;font-size:.78rem;display:flex;gap:6px;align-items:center;color:#cfeff2}
+.focus kbd{font-family:var(--f-mono);font-size:.7rem;background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+body.touch .focus{left:calc(16px + env(safe-area-inset-left,0px));bottom:calc(206px + env(safe-area-inset-bottom,0px));transform:none}
+.tess{display:flex;gap:6px;justify-content:center;margin-top:3px;font-size:.75rem}.tess span{display:inline-flex;align-items:center;gap:2px}
 .fstate{font-size:.75rem;color:var(--muted);margin-top:3px}
 .goal{font-size:.75rem;color:var(--brass);margin-top:2px}
 .team{display:flex;flex-wrap:wrap;gap:2px 10px;margin-top:4px;padding:3px 0;background:none;border:0;border-top:1px solid var(--line);width:100%;text-align:left;font-size:.75rem;color:var(--fg)}
@@ -93,7 +99,7 @@ body.touch .vitals img{width:14px;height:14px}
 .pk{background:#17141cd0;border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:.85rem;animation:fade 2.6s forwards}
 .pk.f{border-color:var(--flux);color:#f0b6dc}.pk.g{border-color:#4d7a38;color:#c6e8b2}
 @keyframes fade{0%,75%{opacity:1}100%{opacity:0}}
-.lockhint{left:50%;bottom:calc(100px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#17141cd0;border:1px solid var(--brass-dim);border-radius:8px;padding:6px 12px;font-size:.85rem}
+.lockhint{left:50%;bottom:calc(128px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#17141cd0;border:1px solid var(--brass-dim);border-radius:8px;padding:6px 12px;font-size:.85rem}
 
 /* táctil */
 .joy{left:calc(20px + env(safe-area-inset-left,0px));bottom:calc(24px + env(safe-area-inset-bottom,0px));width:120px;height:120px;border-radius:50%;background:#ffffff14;border:1px solid #ffffff30;touch-action:none}

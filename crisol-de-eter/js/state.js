@@ -6,7 +6,7 @@ const KEY = "crisol-eter-3d-v1";
 // bl: bloques para poner · sel: bloque elegido · placed: bloques puestos por el jugador · time: hora (0 amanecer, .5 anochecer)
 // res: recetas investigadas · rsch: investigación en curso
 const fresh = () => ({inv:{},scanned:[],cru:{},flux:5,world:{},resp:{},mined:0,rifts:0,won:false,player:null,
-  bl:{},sel:0,placed:{},time:.06,mute:false,res:["sal","tiza"],rsch:null,hp:20,food:20,ex:0,deaths:0,fuel:0});
+  bl:{},sel:0,placed:{},time:.06,mute:false,res:["sal","tiza"],rsch:null,hp:20,food:20,ex:0,deaths:0,fuel:0,vis:60,focus:""});
 let S = fresh();
 try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(fresh(), JSON.parse(raw)); } catch(e) {}
 for (const k of Object.keys(S.inv)) if (!(S.inv[k]>0)) delete S.inv[k];
@@ -19,7 +19,7 @@ if (window.claude?.hot?.data?.S) S = window.claude.hot.data.S;
 window.claude?.hot?.snapshot?.(() => ({S}));
 // En una partida en equipo (js/net.js) lo compartido vive en el servidor: aquí solo se guarda lo personal
 let teamMode=false;
-const save = () => { try { localStorage.setItem(teamMode?KEY+"-equipo":KEY, JSON.stringify(teamMode?{player:S.player,sel:S.sel,mute:S.mute,hp:S.hp,food:S.food,ex:S.ex}:S)); } catch(e) {} };
+const save = () => { try { localStorage.setItem(teamMode?KEY+"-equipo":KEY, JSON.stringify(teamMode?{player:S.player,sel:S.sel,mute:S.mute,hp:S.hp,food:S.food,ex:S.ex,focus:S.focus}:S)); } catch(e) {} };
 
 const $ = id => document.getElementById(id);
 // cambia el HTML solo si es distinto: así no se reinician imágenes ni animaciones al refrescar
@@ -92,6 +92,11 @@ const ICONC={}, ICON={};
     (x,y)=>{ const d=Math.abs((x-3)-(13-y))/1.414; return d<.7?"#7a8a80":sh("#dce8e0",(Math.floor(x+y)%3?1:.86)); });
   C.tiza=mk((x,y)=>{ const t=Math.max(0,Math.min(1,((x-4)*8+(12-y)*8)/128)); return Math.hypot(x-(4+8*t),y-(12-8*t))<1.7; },(x,y)=>sh("#f2efe6",x<7?.88:1.05));
   TOOLS.forEach((t,i)=>{ if(t) C[t]=pickCanvas(...PICK_COL[i]); });
+  C.metal=mk((x,y)=>y>=5.5&&y<11.5&&x>=2+(11.5-y)*.5&&x<14-(11.5-y)*.5,(x,y)=>sh("#9a62b0",y<7.5?1.35:y>10.5?.75:1));
+  C.varita=mk((x,y)=>Math.abs((x-y)-0)<1.1&&x>1.5&&x<14.5,(x,y)=>x<4.5||x>11.5?"#d4a94c":(Math.floor(x)%3?"#5e4127":"#7a5634"));
+  const orb=(c)=>mk((x,y)=>Math.hypot(x-8,y-8)<5.4,(x,y)=>{ const r=Math.hypot(x-8,y-8); return r>4.4?"#cfa75a":(x+y<14?"#ffffff":sh(c,1.1-r/12)); });
+  C.foco_chispa=orb("#e0743c"); C.foco_excava=orb("#a8935c"); C.foco_luz=orb("#f2d36b");
+  C.gafas=mk((x,y)=>Math.hypot(x-4.5,y-9)<3.4||Math.hypot(x-11.5,y-9)<3.4||(y>=8&&y<9.5&&x>7&&x<9),(x,y)=>{ const l=Math.min(Math.hypot(x-4.5,y-9),Math.hypot(x-11.5,y-9)); return l<2.3?(x%4<2?"#cfe9f2":"#9cc3e6"):"#d4a94c"; });
   C.palo=mk((x,y)=>Math.abs((x-y)-0)<1.2&&x>2.5&&x<13.5,(x,y)=>(Math.floor(x)%3)?"#8a6440":"#6b4a2b");
   C.lingote=mk((x,y)=>y>=5.5&&y<11.5&&x>=2+(11.5-y)*.5&&x<14-(11.5-y)*.5,(x,y)=>sh("#d8d8e2",y<7.5?1.15:y>10.5?.75:.95));
   C.laton=mk((x,y)=>y>=4.5&&y<12.5&&x>=1.5+(12.5-y)*.55&&x<14.5-(12.5-y)*.55,(x,y)=>sh("#d4a94c",y<6.5?1.3:y>11?.8:1));
@@ -178,7 +183,12 @@ function catalyze(rid){
   pick(`El crisol forjó: ${ITEMS[r.id].n}`,"g"); crucibleSplash({luz:4,orden:4}); sfx("forge"); teamSay(`forjó ${ITEMS[r.id].n} en el crisol`);
 }
 function emptyCru(){ const t=sum(S.cru); S.cru={}; sfx("water"); addFlux(Math.ceil(t/3),"esencia derramada"); }
-function useSal(){ take("sal"); const d=Math.min(25,S.flux); S.flux-=d; pick(`Sal purificadora: −${d} flux`,"g"); sfx("forge"); }
+// la sal baja el flux y además limpia el suelo corrupto alrededor
+function useSal(){
+  take("sal"); const d=Math.min(25,S.flux); S.flux-=d; let clean=0;
+  for(let x=Math.floor(P.x)-5;x<=Math.floor(P.x)+5;x++) for(let z=Math.floor(P.z)-5;z<=Math.floor(P.z)+5;z++) for(let y=Math.floor(P.y)-3;y<=Math.floor(P.y)+2;y++) if(getB(x,y,z)===15){ setBlock(x,y,z,1); clean++; }
+  pick(`Sal purificadora: −${d} flux${clean?` y ${clean} bloques limpios`:""}`,"g"); sfx("forge");
+}
 function infNeeds(r){ const n={}; [r.center,...r.peds].forEach(i=>n[i]=(n[i]||0)+1); return n; }
 function stabilizers(r){ return Math.max(0, Math.min(2, has("vela")-(infNeeds(r).vela||0))); }
 function instability(r){ return Math.max(5, Math.min(90, r.peds.length*8 + Math.round(sum(r.cost)/2) - stabilizers(r)*15)); }
@@ -187,11 +197,22 @@ const canInfuse = r => researched(r.id) && Object.entries(infNeeds(r)).every(([i
 /* ================= Investigación ================= */
 // Cada receta resuena con una secuencia secreta de esencias, sacada de su costo y de su catalizador (o centro).
 // Se descifra en la estantería del taller probando secuencias: 2 = en su lugar, 1 = está en otro lugar, 0 = no está.
-const recipe = id => CRU.find(r=>r.id===id) || INF.find(r=>r.id===id);
+const recipe = id => CRU.find(r=>r.id===id) || INF.find(r=>r.id===id) || ARC.find(r=>r.id===id);
+const ALL_RECIPES = [...CRU,...ARC,...INF];
 const researched = id => S.res.includes(id);
-function resPool(r){ const s=new Set([...Object.keys(r.cost),...Object.keys(ITEMS[r.cat||r.center].e)]); return ESS_ORDER.filter(e=>s.has(e)); }
-const resLen = r => r.cat ? 3 : 4;
-const resTries = r => r.cat ? 5 : r.final ? 7 : 6;
+function resPool(r){ const s=new Set(r.ess||[...Object.keys(r.cost),...Object.keys(ITEMS[r.cat||r.center].e)]); return ESS_ORDER.filter(e=>s.has(e)); }
+const resLen = r => (r.cat||r.ess&&!r.big) ? 3 : 4;
+const resTries = r => (r.cat||r.ess&&!r.big) ? 5 : r.final ? 7 : 6;
+const recipeWhere = r => r.cat?"crisol":r.ess?"mesa arcana":"altar";
+const canArc = r => researched(r.id) && canCraft(r) && S.vis>=r.vis;
+function craftArc(r){
+  if(!canArc(r)) return;
+  for(const [k,n] of Object.entries(r.in)) takeK(k,n); S.vis-=r.vis; give(r.id);
+  if(!S.scanned.includes(r.id)) S.scanned.push(r.id);
+  if(ITEMS[r.id].focus&&!S.focus) S.focus=r.id;
+  pick(`La mesa arcana dio forma a: ${ITEMS[r.id].n}`,"g"); sfx("forge"); teamSay(`hizo ${ITEMS[r.id].n} en la mesa arcana`);
+  for(let i=0;i<24;i++){ const a=i/24*6.28; spawn(MESA_POS[0]+.5+Math.cos(a)*.6,MESA_POS[1]+1.1,MESA_POS[2]+.5+Math.sin(a)*.6,-Math.cos(a)*.6,.6,-Math.sin(a)*.6,h2a("#59d0d6"),.9); }
+}
 const canResearch = r => !researched(r.id) && resPool(r).every(e=>known().has(e));
 function startResearch(id){
   const r=recipe(id); if(S.rsch||!canResearch(r)||!has("pluma")) return;

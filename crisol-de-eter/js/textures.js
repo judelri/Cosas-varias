@@ -2,7 +2,7 @@
 // Script clásico (sin módulos): comparte el ámbito global con los demás archivos de js/.
 
 /* ================= Atlas de texturas ================= */
-const TILES=["grass_top","grass_side","dirt","stone","sand","water","log_side","log_top","leaves","planks","ore_iron","ore_coal","ore_quartz","ore_spark","obsidian","ash","corrupt_top","corrupt_side","bookshelf","bricks","altar","metal","tallgrass","flower_red","flower_yellow","torch","crystal","craft_top","craft_side","furnace_front","furnace_top"];
+const TILES=["grass_top","grass_side","dirt","stone","sand","water","log_side","log_top","leaves","planks","ore_iron","ore_coal","ore_quartz","ore_spark","obsidian","ash","corrupt_top","corrupt_side","bookshelf","bricks","altar","metal","tallgrass","flower_red","flower_yellow","torch","crystal","craft_top","craft_side","furnace_front","furnace_top","orb"];
 const TI={}; TILES.forEach((t,i)=>TI[t]=i); const NT=TILES.length;
 const atlas=document.createElement("canvas"); atlas.width=16*NT; atlas.height=16;
 const g=atlas.getContext("2d");
@@ -58,6 +58,8 @@ for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const row=Math.floor(y/4), seam=(y%
 for(let y=4;y<11;y++) px("craft_side",4,y,"#5e4127"); for(let x=2;x<7;x++) px("craft_side",x,4,"#8d8d98"); for(let y=4;y<12;y++) px("craft_side",11,y,"#5e4127"); px("craft_side",10,4,"#c9c9d2"); px("craft_side",12,4,"#c9c9d2"); px("craft_side",11,3,"#c9c9d2");
 // horno: piedra con boca encendida
 stone("furnace_top"); stone("furnace_front"); for(let y=8;y<14;y++) for(let x=4;x<12;x++) px("furnace_front",x,y, y<10?"#1a1418":pk(["#e0743c","#f2b13c","#c8501c"])); for(let x=3;x<13;x++){ px("furnace_front",x,7,"#5a5a5a"); px("furnace_front",x,14,"#5a5a5a"); }
+// orbe de luz: un punto brillante con halo
+for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const r=Math.hypot(x-7.5,y-7.5); if(r<2.2) px("orb",x,y,"#ffffff"); else if(r<3.6) px("orb",x,y,"#e6fbff"); else if(r<4.6&&(x+y)%2) px("orb",x,y,"#9fe8ee"); }
 function tileTex(name){ const c=document.createElement("canvas"); c.width=c.height=16; c.getContext("2d").drawImage(atlas,TI[name]*16,0,16,16,0,0,16,16); const t=new THREE.CanvasTexture(c); t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter; return t; }
 
 /* ================= Bloques ================= */
@@ -91,10 +93,11 @@ const B = [
   {n:"Antorcha",bl:25,m:"madera",t:["torch"],plant:1,torch:1,light:14,hard:.05,c:"#f2b13c"},
   ...PRIMAL.map(e=>({n:"Cúmulo de cristal de "+ESS[e].n,m:"cristal",t:["crystal"],plant:1,tint:ESS[e].c,light:7,tier:1,drop:[["cr_"+e,1],["cr_"+e,.5]],hard:.9,resp:1,c:ESS[e].c})),
   {n:"Mesa de trabajo",m:"madera",t:["craft_top","craft_side","planks"],unbreak:1,use:"mesa",c:"#a8824f"},
-  {n:"Horno",m:"roca",t:["furnace_top","furnace_front","furnace_top"],unbreak:1,use:"horno",light:0,c:"#7f7d82"}
+  {n:"Horno",m:"roca",t:["furnace_top","furnace_front","furnace_top"],unbreak:1,use:"horno",light:0,c:"#7f7d82"},
+  {n:"Orbe de luz",m:"cristal",t:["orb"],plant:1,torch:1,light:15,hard:.05,c:"#e6fbff"}
 ];
 // light: luz que da el bloque (0-15) · tier: pico mínimo para que suelte algo (1 madera, 2 piedra, 3 hierro)
-const CRYSTAL0=26, TORCH=25;
+const CRYSTAL0=26, TORCH=25, ORB=34;
 
 /* iconos isométricos de los bloques que se pueden poner (32×32) */
 const BICON={};

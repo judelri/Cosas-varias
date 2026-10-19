@@ -13,6 +13,10 @@ function vitalsHTML(){
   return row(S.hp,VIT.h,VIT.hh,VIT.he,"hearts")+row(S.food,VIT.f,VIT.fh,VIT.fe,"food");
 }
 function hud(){
+  $("visbar").style.width=Math.max(0,Math.min(100,S.vis))+"%"; $("visval").textContent=`${Math.floor(Math.max(0,S.vis))}/100`;
+  const foci=myFoci(); if(foci.length&&!has(S.focus)) S.focus=foci[0];
+  $("focus").hidden=!has("varita"); $("bCast").hidden=!has("varita");
+  if(has("varita")) setHTML($("focus"),S.focus?`${icon(S.focus,"ic sm")} ${ITEMS[S.focus].focus.n} <span class="mono">${ITEMS[S.focus].focus.cost} vis</span>${isTouch?"":` <kbd>R</kbd> <kbd>V</kbd>`}`:"Varita sin foco");
   $("fluxbar").style.width=Math.min(100,S.flux)+"%"; $("fluxval").textContent=`${S.flux}/100`;
   const fs=$("fstate"); fs.textContent = S.flux>=80?"Grieta inminente":S.flux>=50?"Bruma: puede corromper objetos":"Estable"; fs.style.color=S.flux>=80?"var(--bad)":S.flux>=50?"var(--flux)":"";
   $("goal").textContent = S.won ? "Corazón de Éter forjado" : busy ? "Infusión en curso…" : "Objetivo: el Corazón de Éter";
@@ -87,12 +91,12 @@ function renderPanel(){
         <div class="acts"><button class="btn" data-act="rdel" ${R.cur.length?"":"disabled"}>Borrar</button> <button class="btn pri" data-act="rtry" ${R.cur.length===n?"":"disabled"}>Probar</button> <button class="btn" data-act="rquit">Abandonar la nota</button></div></div>`;
     } else {
       const K=known();
-      h+=`<div class="rows">${[...CRU,...INF].map(r=>{ const pool=resPool(r), miss=pool.filter(e=>!K.has(e)).length;
+      h+=`<div class="rows">${ALL_RECIPES.map(r=>{ const pool=resPool(r), miss=pool.filter(e=>!K.has(e)).length;
         const body = researched(r.id) ? `<p class="note" style="color:var(--good)">Investigada</p>`
           : miss ? `<p class="note">Te faltan ${miss} esencia${miss>1?"s":""} por descubrir: escanea más materiales.</p>`
           : `<div class="chips"><span class="note" style="margin:0 4px 0 0">Resuena con</span>${pool.map(e=>`<span class="chip">${sig(e)} ${ESS[e].n}</span>`).join("")}</div>
              <div class="acts"><button class="btn pri" data-act="rstart" data-id="${r.id}" ${has("pluma")?"":"disabled"}>Escribir nota (−1 Pluma)</button></div>${has("pluma")?"":`<p class="note">Necesitas una Pluma: cae de las hojas y de los dientes de león.</p>`}`;
-        return `<div class="row">${icon(r.id)}<div style="min-width:0"><div class="nm">${ITEMS[r.id].n} <span class="note">${r.cat?"crisol":"altar"} · ${resLen(r)} esencias, ${resTries(r)} intentos</span></div>${body}</div></div>`; }).join("")}</div>`;
+        return `<div class="row">${icon(r.id)}<div style="min-width:0"><div class="nm">${ITEMS[r.id].n} <span class="note">${recipeWhere(r)} · ${resLen(r)} esencias, ${resTries(r)} intentos</span></div>${body}</div></div>`; }).join("")}</div>`;
     }
   }
   else if(panel==="equipo"){
@@ -107,16 +111,17 @@ function renderPanel(){
     const K=known();
     h=`<h2>Grimorio</h2>
     <h3>Controles</h3>${isTouch?`<div class="keys"><kbd>Joystick</kbd><span>Moverte (salta solo al chocar con un bloque)</span><kbd>Arrastrar</kbd><span>Mirar alrededor</span><kbd>Picar</kbd><span>Mantén para romper el bloque al que apuntas</span><kbd>Usar</kbd><span>Abrir crisol, altar o estantería; recoger agua; poner el bloque elegido</span><kbd>Escanear</kbd><span>Aprender las esencias del bloque</span><kbd>Barra</kbd><span>Toca un bloque para elegirlo</span><kbd>Corazones</kbd><span>Tócalos para comer</span></div>`
-      :`<div class="keys"><kbd>Clic</kbd><span>Capturar el ratón</span><kbd>WASD</kbd><span>Moverte</span><kbd>Espacio</kbd><span>Saltar o nadar</span><kbd>Clic izq.</kbd><span>Mantén para picar</span><kbd>Clic der. / E</kbd><span>Usar: crisol, altar, estantería, agua, o poner el bloque elegido</span><kbd>1–9 / rueda</kbd><span>Elegir bloque</span><kbd>F</kbd><span>Escanear el bloque apuntado</span><kbd>I</kbd><span>Mochila</span><kbd>G</kbd><span>Grimorio</span><kbd>C</kbd><span>Comer</span><kbd>M</kbd><span>Sonido sí / no</span><kbd>Esc / E</kbd><span>Cerrar el panel</span></div>`}
+      :`<div class="keys"><kbd>Clic</kbd><span>Capturar el ratón</span><kbd>WASD</kbd><span>Moverte</span><kbd>Espacio</kbd><span>Saltar o nadar</span><kbd>Clic izq.</kbd><span>Mantén para picar</span><kbd>Clic der. / E</kbd><span>Usar: crisol, altar, estantería, agua, o poner el bloque elegido</span><kbd>1–9 / rueda</kbd><span>Elegir bloque</span><kbd>F</kbd><span>Escanear el bloque apuntado</span><kbd>I</kbd><span>Mochila</span><kbd>G</kbd><span>Grimorio</span><kbd>C</kbd><span>Comer</span><kbd>R / V</kbd><span>Lanzar con la varita / cambiar de foco</span><kbd>M</kbd><span>Sonido sí / no</span><kbd>Esc / E</kbd><span>Cerrar el panel</span></div>`}
     <h3>El mundo</h3><ul class="rules"><li>Taller (centro): crisol a la izquierda, altar con 4 pedestales a la derecha, estantería de investigación al fondo, con la mesa de trabajo y el horno a sus lados.</li>
     <li>Herramientas: empiezas a mano. Pica troncos, haz tablones y palos en la mesa, y tu primer pico. La roca y el carbón piden pico de madera; el hierro, el cuarzo y la piedra chispa, de piedra; la obsidiana, de hierro. Funde el hierro en el horno.</li><li>Río (oeste): agua y arena.</li><li>Bosque (sur): troncos con ámbar, hojas con plumas y semillas.</li><li>Montaña (noreste): hierro, carbón, cuarzo y piedra chispa.</li><li>Grieta (sureste): ceniza, obsidiana y suelo corrupto. Picar ahí sube el flux.</li><li>Los recursos vuelven a aparecer al minuto.</li><li>Al picar tierra, roca, arena, troncos u hojas te llevas el bloque para ponerlo donde quieras. Lo que pones no suelta objetos ni reaparece.</li><li>Tienes 10 corazones y 10 de comida. La comida baja con el tiempo (y al saltar, picar y pelear); con la comida casi llena te curas, y con hambre pierdes vida. Caer de más de 3 bloques duele. Si caes, reapareces en el taller con todo.</li><li>Un día dura unos 6 minutos; la noche, más oscura, pasa más rápido. De noche la Grieta se agita: sus bloques sueltan el doble y dan el doble de flux.</li></ul>
     <h3>Esencias <span class="mono" style="font-size:.85rem;color:var(--muted)">${K.size}/${ESS_ORDER.length}</span></h3>
     <div class="egrid">${ESS_ORDER.map(e=>{ const E=ESS[e],k=K.has(e); const sub=!k?"Sin descubrir":E.from?(E.from.every(x=>K.has(x))?`${ESS[E.from[0]].n} + ${ESS[E.from[1]].n}`:"Compuesta"):"Primal · "+E.d; return `<div class="ess${k?"":" unk"}">${k?sig(e,24):`<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="#3b3346" stroke-dasharray="2 3"/></svg>`}<div><strong>${k?E.n:"???"}</strong><small>${sub}</small></div></div>`; }).join("")}</div>
     <h3>Criaturas</h3><ul class="rules"><li>Gallinas en los prados: sueltan plumas, pollo crudo y a veces semillas. Huyen si las golpeas.</li><li>Polillas de luz, solo de noche: sueltan Polvo de luz (Luz y Céfiro).</li><li>Sombras de bruma: nacen en la oscuridad (cuevas, la noche lejos de antorchas, o con el flux en 50 o más). Te persiguen y golpean (1,5 corazones). Cuatro golpes las deshacen. No entran al taller y el sol las disuelve.</li><li>Se golpean apuntando y picando; escanear una criatura muestra lo que suelta.</li></ul>
+    <h3>Magia</h3><ul class="rules"><li>El aura guarda vis (barra celeste): se recarga sola, más lento con el flux alto.</li><li>Los cristales crecen en las cuevas (pico de madera) y los sueltan los fuegos fatuos.</li><li>La mesa arcana (en la mesa de trabajo) usa cristales y vis: varita, focos, gafas y pico de metal arcano. El metal arcano se funde en el crisol con un lingote.</li><li>La varita lanza su foco con R (V cambia de foco; en el celular, botón Lanzar y tocar el foco). Chispa daña a distancia, Excavación rompe bloques lejos, Luz deja orbes de luz. Lanzar puede dejar flux.</li><li>Las gafas de revelación muestran las esencias de lo que miras.</li><li>Con el flux en 50 o más, el suelo corrupto se extiende desde la Grieta. La sal purificadora lo limpia a tu alrededor.</li></ul>
     <h3>Recetas del crisol</h3><div class="rows" style="margin:8px 0 16px">${CRU.map(r=>`<div class="row">${icon(r.id)}<div style="min-width:0"><div class="nm">${ITEMS[r.id].n}</div><p class="note">Catalizador: ${ITEMS[r.cat].n}${researched(r.id)?"":" · sin investigar: descífrala en la estantería del taller"}</p>${researched(r.id)?`<div class="chips">${Object.entries(r.cost).map(([e,n])=>chip(e,n)).join("")}</div>`:""}</div></div>`).join("")}</div>
     <h3>Investigación</h3><ul class="rules"><li>Al principio solo conoces la Sal purificadora y la Tiza arcana; las demás recetas se descifran en la estantería.</li><li>Necesitas conocer las esencias con las que resuena la receta y una Pluma para escribir la nota.</li><li>Una nota perdida suma 3 de flux.</li></ul>
     <h3>Flux</h3><ul class="rules"><li>Desbordar el crisol (más de ${CAP}) convierte el exceso en flux.</li><li>Vaciarlo genera un tercio de lo derramado.</li><li>Picar en la Grieta y las infusiones inestables suman flux.</li><li>Desde 50, cada medio minuto la bruma puede corromper un objeto.</li><li>A 100 se abre una grieta: pierdes el crisol y dos objetos.</li><li>Sal purificadora: −25. Amuleto de calma: generas la mitad.</li></ul>
-    <h3>Partida</h3><p class="note">${S.mined} bloques picados · ${S.rifts} grietas · ${S.scanned.length} objetos escaneados · ${S.res.length}/${CRU.length+INF.length} recetas investigadas</p>
+    <h3>Partida</h3><p class="note">${S.mined} bloques picados · ${S.rifts} grietas · ${S.scanned.length} objetos escaneados · ${S.res.length}/${ALL_RECIPES.length} recetas investigadas</p>
     ${teamMode?`<p class="note" style="margin-top:6px">Es una partida en equipo: vive en el servidor. Para empezar de cero, ciérralo y ábrelo con <span class="mono">python3 tools/servidor.py --nueva</span>.</p>`:`<div style="margin-top:8px">${resetAsk?`<button class="btn" data-act="reset2" style="border-color:var(--bad)">Sí, borrar la partida</button> <button class="btn" data-act="reset0">Cancelar</button>`:`<button class="btn" data-act="reset1">Empezar de nuevo</button>`}</div>`}`;
   }
   else if(panel==="mesa"){
@@ -125,7 +130,14 @@ function renderPanel(){
       return `<div class="row${ok?"":" dim"}">${iconK(r.out)}<div style="min-width:0"><div class="nm">${nameK(r.out)}${(r.n||1)>1?` <span class="mono" style="color:var(--muted)">×${r.n}</span>`:""}</div>
         <div class="chips">${Object.entries(r.in).map(([k,n])=>`<span class="chip${haveK(k)<n?" short":""}">${iconK(k,"ic sm")}<b>${haveK(k)}/${n}</b> ${nameK(k)}</span>`).join("")}</div>
         ${ITEMS[r.out]&&ITEMS[r.out].d?`<p class="note">${ITEMS[r.out].d}</p>`:""}
-        <div class="acts"><button class="btn pri" data-act="craft" data-id="${i}" ${ok?"":"disabled"}>Fabricar</button><button class="btn" data-act="craftall" data-id="${i}" ${ok?"":"disabled"}>Todo lo posible</button></div></div></div>`; }).join("")}</div>`;
+        <div class="acts"><button class="btn pri" data-act="craft" data-id="${i}" ${ok?"":"disabled"}>Fabricar</button><button class="btn" data-act="craftall" data-id="${i}" ${ok?"":"disabled"}>Todo lo posible</button></div></div></div>`; }).join("")}</div>
+    <h2 style="margin-top:18px">Mesa arcana</h2><p class="hint">Recetas que piden cristales y vis del aura (ahora: <b class="mono">${Math.floor(S.vis)}</b>). Primero hay que descifrarlas en la estantería.</p>
+    <div class="rows">${ARC.map((r,i)=>{ const it=ITEMS[r.id];
+      if(!researched(r.id)) return `<div class="row dim">${icon(r.id)}<div style="min-width:0"><div class="nm">${it.n}</div><p class="note">Sin investigar: descífrala en la estantería del taller.</p></div></div>`;
+      const ok=canArc(r);
+      return `<div class="row${ok?"":" dim"}">${icon(r.id)}<div style="min-width:0"><div class="nm">${it.n}</div>
+        <div class="chips">${Object.entries(r.in).map(([k,n])=>`<span class="chip${haveK(k)<n?" short":""}">${iconK(k,"ic sm")}<b>${haveK(k)}/${n}</b> ${nameK(k)}</span>`).join("")}<span class="chip vis${S.vis<r.vis?" short":""}"><b>${r.vis}</b> vis</span></div>
+        <p class="note">${it.d}</p><div class="acts"><button class="btn pri" data-act="arc" data-id="${i}" ${ok?"":"disabled"}>Fabricar</button></div></div></div>`; }).join("")}</div>`;
   }
   else if(panel==="horno"){
     h=`<h2>Horno</h2><p class="hint">Cada cosa que fundes gasta una carga de combustible. Si se acaba, el horno quema solo lo que tengas: tablones (1,5), palos (0,5), troncos (1,5) o carbón (8).</p>
@@ -147,6 +159,7 @@ $("panel").addEventListener("click",ev=>{
   const b=ev.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act,id=b.dataset.id;
   if(a==="closep"||a==="respawn") return closePanel();
   if(a==="eat"){ eat(id); if(panel) renderPanel(); return; }
+  if(a==="arc") craftArc(ARC[+id]);
   if(a==="craft"||a==="craftall") craft(MESA[+id],a==="craft"?1:99); else if(a==="smelt"||a==="smeltall") smelt(HORNO[+id],a==="smelt"?1:99);
   if(a==="play"){ closePanel(); if(!isTouch) canvas.requestPointerLock?.(); return; }
   if(a==="scan") scanItems([id]); else if(a==="dis") dissolve(id); else if(a==="cat") catalyze(id);
@@ -188,6 +201,7 @@ document.addEventListener("keydown",e=>{
   keys[k]=true;
   if(k==="e") doUse(); else if(k==="f") doScan(); else if(k==="i") openPanel("mochila"); else if(k==="g") openPanel("grimorio"); else if(k==="q") mining=true;
   else if(k==="c"&&!e.repeat) eat();
+  else if(k==="r") cast(); else if(k==="v"&&!e.repeat) cycleFocus();
   else if(k==="m"&&!e.repeat){ setMute(!S.mute); hud(); save(); }
   else if(/^[1-9]$/.test(k)){ const id=+Object.keys(S.bl)[k-1]; if(id) selectBlock(id); }
   if([" ","arrowup","arrowdown"].includes(k)) e.preventDefault();
@@ -204,4 +218,5 @@ joyEl.addEventListener("pointerup",joyEnd); joyEl.addEventListener("pointercance
 const hold=(id,on,off)=>{ const el=$(id); el.addEventListener("pointerdown",e=>{ e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add("on"); on(); }); const f=()=>{ el.classList.remove("on"); off&&off(); }; el.addEventListener("pointerup",f); el.addEventListener("pointercancel",f); };
 hold("bMine",()=>mining=true,()=>mining=false);
 hold("bJump",()=>jumpBtn=true,()=>jumpBtn=false);
-hold("bUse",()=>{ using=true; doUse(); },()=>using=false); hold("bScan",doScan);
+hold("bUse",()=>{ using=true; doUse(); },()=>using=false); hold("bScan",doScan); hold("bCast",cast);
+$("focus").addEventListener("click",cycleFocus);

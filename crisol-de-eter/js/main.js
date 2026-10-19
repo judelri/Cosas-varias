@@ -6,7 +6,11 @@ function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false)
   // hombro desplazado para que, en reposo, el brazo quede donde siempre
   ARM_BASE.sh=new THREE.Vector3(0,0,-SH_D).applyEuler(new THREE.Euler(ARM_BASE.rx,ARM_BASE.ry,0)).multiplyScalar(armG.scale.x); }
 addEventListener("resize",resize); resize();
-let last=performance.now(), tick1=0, tick30=0, savet=0, lastStep=0;
+let last=performance.now(), tick1=0, tick30=0, savet=0, lastStep=0, visT=0, taintT=0;
+// con flux alto el suelo corrupto se extiende desde la Grieta: prueba columnas al azar cerca de ella
+function spreadTaint(){ let n=0; for(let k=0;k<40&&n<3;k++){ const x=RIFT[0]-16+rnd(33), z=RIFT[1]-16+rnd(33); if(x<0||z<0||x>=W||z>=D||Math.hypot(x-RIFT[0],z-RIFT[1])>16) continue;
+  let y=H-1; while(y>0&&!opaqueL(getB(x,y,z))) y--; const id=getB(x,y,z); if((id!==1&&id!==2)||inLab(x+.5,z+.5,9)) continue;
+  if([[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dz])=>{ for(let dy=-1;dy<=1;dy++) if(getB(x+dx,y+dy,z+dz)===15) return true; return false; })){ setBlock(x,y,z,15); burst(x,y,z,"#9a62b0",6); n++; } } }
 function persist(){ if(resetting) return; S.player={x:P.x,y:P.y,z:P.z,yaw:P.yaw,pitch:P.pitch}; save(); }
 addEventListener("pagehide",persist); document.addEventListener("visibilitychange",()=>{ if(document.hidden) persist(); });
 function frame(now){
@@ -45,6 +49,10 @@ function frame(now){
     const b=B[target.id]; $("tgtName").textContent=b.n;
     $("tgtHint").textContent = b.use ? "Usar: abrir" : b.water ? "Usar: recoger agua" : b.unbreak ? "" : b.tier&&toolTier()<b.tier ? `Necesitas un ${ITEMS[TOOLS[b.tier]].n.toLowerCase()}` : `Picar${b.drop?" · Escanear":""}`;
   } else { sel.visible=false; $("tgtName").textContent=""; $("tgtHint").textContent=""; }
+  // gafas de revelación: esencias conocidas de lo que suelta lo que miras
+  { let ids=[]; if(has("gafas")){ if(targetMob) ids=MOB[targetMob.type].drop.map(d=>d[0]); else if(target) ids=target.id===5?["agua"]:(B[target.id].drop||[]).map(d=>d[0]); }
+    const K=ids.length?known():null, tot={}; ids.forEach(i=>Object.entries(ITEMS[i].e).forEach(([e,n])=>{ if(K.has(e)) tot[e]=(tot[e]||0)+n; }));
+    setHTML($("tgtEss"),Object.entries(tot).map(([e,n])=>`<span>${sig(e,13)}${n}</span>`).join("")); }
   if(mining&&targetMob){ if(atkCd<=0){ atkCd=.45; attackMob(targetMob); exhaust(.1); } mine.k=null; mine.p=0; }
   else if(mining && target && !B[target.id].unbreak && !B[target.id].water && !B[target.id].custom){
     const k=`${target.x},${target.y},${target.z}`; if(mine.k!==k){ mine.k=k; mine.p=0; }
@@ -65,6 +73,12 @@ function frame(now){
     if(!teamMode||NET.leader) for(const [k,r] of Object.entries(S.resp)){ if(now2<r.t) continue; const [x,y,z]=k.split(",").map(Number);
       if(getB(x,y,z)!==0){ delete S.resp[k]; continue; } if(inBody(x,y,z)||netInBody(x,y,z)) continue; setBlock(x,y,z,r.id); delete S.resp[k]; }
     if($("clock").textContent!==dayPart()) hud(); }
+  // aura y corrupción: las lleva quien simula el mundo (tú solo, o el guía en equipo)
+  if(!teamMode||NET.leader){
+    visT+=dt; if(visT>=1.5){ visT=0; if(S.vis<100) S.vis=Math.min(100,S.vis+(S.flux>=50?.5:1)); if(Math.round(S.vis)%5===0) hud(); }
+    taintT+=dt; if(taintT>=6){ taintT=0; if(S.flux>=50) spreadTaint(); }
+  }
+  castCd=Math.max(0,castCd-dt);
   if(tick30>30){ tick30=0; if((!teamMode||NET.leader) && S.flux>=50 && Math.random()<.35){ const raws=Object.keys(S.inv).filter(i=>!ITEMS[i].crafted&&i!=="corrupta"); if(raws.length){ const v=raws[rnd(raws.length)]; take(v); give("corrupta"); pick(`La bruma corrompió: ${ITEMS[v].n}`,"f"); sfx("corrupt"); teamSay(`vio cómo la bruma corrompía: ${ITEMS[v].n}`); hud(); } } }
   if(savet>5){ savet=0; persist(); }
 

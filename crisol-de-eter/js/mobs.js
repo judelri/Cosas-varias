@@ -8,8 +8,11 @@
 const MOB={
   gallina:{n:"Gallina",hp:3,speed:1.4,w:.45,h:.75,c:"#f4f0e6",drop:[["pluma",1,2],["pollo",1,1],["semilla",.3,1]]},
   polilla:{n:"Polilla de luz",hp:1,speed:1.8,w:.5,h:.4,fly:1,c:"#f2d36b",drop:[["polvo",1,1]]},
-  sombra:{n:"Sombra de bruma",hp:4,speed:2.4,w:.6,h:1.7,hostile:1,c:"#9a62b0",drop:[["ceniza",.8,1],["corrupta",.5,1]]}
+  sombra:{n:"Sombra de bruma",hp:4,speed:2.4,w:.6,h:1.7,hostile:1,c:"#9a62b0",drop:[["ceniza",.8,1],["corrupta",.5,1]]},
+  // fuegos fatuos: orbes de una esencia primal; sueltan su cristal
+  ...Object.fromEntries(PRIMAL.map(e=>["fatuo_"+e,{n:"Fuego fatuo de "+ESS[e].n,hp:2,speed:1.6,w:.45,h:.45,fly:1,wisp:1,c:ESS[e].c,drop:[["cr_"+e,1,1],["cr_"+e,.5,1]]}]))
 };
+const grp=t=>MOB[t].wisp?"fatuo":t;
 const mobs={}, mobEvents=[];
 let mobSeq=0, mobSpawnT=0, mobSendT=0, mobOff=null, atkCd=0, targetMob=null, wasSim=true;
 const simMobs=()=>!teamMode||NET.leader;
@@ -19,7 +22,7 @@ const inLab=(x,z,r)=>Math.hypot(x-LAB.x-.5,z-LAB.z-.5)<r; // el taller es zona s
 /* modelos de bloques */
 function mobMesh(type){
   const g=new THREE.Group(), parts={}, mats=[];
-  const L=c=>{ const m=lam({color:c}); mats.push(m); return m; };
+  const L=c=>{ const m=lam({color:c}); m.userData.c=m.color.clone(); mats.push(m); return m; };
   const Bs=(c,o={})=>{ const m=new THREE.MeshBasicMaterial({color:c,...o}); m.userData.c=m.color.clone(); mats.push(m); return m; };
   const box=(w,h,d,mat,x,y,z,parent=g)=>{ const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); b.position.set(x,y,z); parent.add(b); return b; };
   const piv=(x,y,z,parent=g)=>{ const p=new THREE.Group(); p.position.set(x,y,z); parent.add(p); return p; };
@@ -37,6 +40,9 @@ function mobMesh(type){
     box(.08,.08,.22,body,0,0,0); box(.02,.02,.08,body,-.03,.03,-.14); box(.02,.02,.08,body,.03,.03,-.14);
     parts.wingL=piv(-.04,0,0); box(.3,.01,.2,wing,-.15,0,0,parts.wingL);
     parts.wingR=piv(.04,0,0); box(.3,.01,.2,wing,.15,0,0,parts.wingR);
+  } else if(MOB[type].wisp){
+    const c=MOB[type].c, core=Bs("#ffffff"), glow=Bs(c,{transparent:true,opacity:.75}), halo=Bs(c,{transparent:true,opacity:.25,depthWrite:false});
+    parts.core=piv(0,0,0); box(.14,.14,.14,core,0,0,0,parts.core); box(.28,.28,.28,glow,0,0,0,parts.core); box(.46,.46,.46,halo,0,0,0,parts.core);
   } else {
     const dark=Bs("#1d1426",{transparent:true,opacity:.85}), wisp=Bs("#2e1a3e",{transparent:true,opacity:.55}), eye=Bs("#f05fd0");
     box(.36,.5,.22,wisp,0,.45,0); box(.5,.8,.3,dark,0,1.05,0);
@@ -66,9 +72,20 @@ function surface(x,z){ for(let y=H-1;y>=0;y--){ const id=getB(x,y,z); if(id>0&&!
 function mobCaps(){
   const night=daylight<.3, f=S.flux;
   // sombras: siempre hasta 2 en las cuevas oscuras; de noche 3 más en la superficie; más con flux alto
-  return {gallina:5, polilla:night?5:0, sombra:2+(night?3:0)+(f>=50?2:0)+(f>=80?2:0)};
+  return {gallina:5, polilla:night?5:0, sombra:2+(night?3:0)+(f>=50?2:0)+(f>=80?2:0), fatuo:3};
 }
 function trySpawn(type){
+  // fuegos fatuos: en las cuevas o sobre la montaña y la Grieta
+  if(type==="fatuo"){
+    const t="fatuo_"+PRIMAL[rnd(6)];
+    for(let k=0;k<12;k++){
+      let x,y,z; if(CAVES.length&&Math.random()<.6){ const i=CAVES[rnd(CAVES.length)]; x=i%W; z=Math.floor(i/W)%D; y=Math.floor(i/(W*D))+.8; }
+      else { x=Math.random()<.5?RIFT[0]-8+rnd(17):30+rnd(16); z=Math.random()<.5?RIFT[1]-8+rnd(17):1+rnd(20); const s=surface(x,z); if(!s||s.id===5) continue; y=s.y+1.5+Math.random()*1.5; }
+      const [,d]=nearestPlayer(x+.5,z+.5); if(d<8||d>32) continue;
+      addMob(`${myId()}.${++mobSeq}`,t,x+.5,y,z+.5); return;
+    }
+    return;
+  }
   // las sombras nacen en la oscuridad: suelo de cueva, o la superficie de noche (o con flux alto) lejos de antorchas
   if(type==="sombra"&&(!(daylight<.3||S.flux>=50)||Math.random()<.4)){
     for(let k=0;k<10&&CAVES.length;k++){ const i=CAVES[rnd(CAVES.length)], x=i%W, z=Math.floor(i/W)%D, y=Math.floor(i/(W*D));
@@ -88,8 +105,8 @@ function trySpawn(type){
   }
 }
 function spawnTick(){
-  const caps=mobCaps(), count={gallina:[],polilla:[],sombra:[]};
-  for(const m of Object.values(mobs)) count[m.type].push(m);
+  const caps=mobCaps(), count={gallina:[],polilla:[],sombra:[],fatuo:[]};
+  for(const m of Object.values(mobs)) count[grp(m.type)].push(m);
   // el sol disuelve a las sombras que están a cielo abierto (salvo con flux alto)
   if(daylight>.6&&S.flux<50) for(const m of count.sombra){ if(lightAt(Math.floor(m.x),Math.floor(m.y+1),Math.floor(m.z))[0]>=12){ killMob(m,0,false); count.sombra.splice(count.sombra.indexOf(m),1); break; } }
   for(const type in caps){
@@ -123,7 +140,7 @@ function physics(m,dt){
   const D=MOB[m.type], vx=m.vx+m.kx, vz=m.vz+m.kz; let bump=false;
   m.kx*=Math.max(0,1-dt*5); m.kz*=Math.max(0,1-dt*5);
   if(D.fly){ // revolotea entre 1,2 y 4 bloques sobre el suelo; si choca, cambia de rumbo
-    const s=surface(Math.floor(m.x),Math.floor(m.z)), floor=(s?s.y:1)+1.2;
+    let fy=Math.floor(m.y); while(fy>0&&!solidAt(Math.floor(m.x),fy-1,Math.floor(m.z))) fy--; const floor=fy+(D.wisp?.8:1.2);
     m.vy=m.dy+(m.y<floor?1.2:m.y>floor+2.8?-1:0)+Math.sin(performance.now()/260+m.ph)*.5;
   } else {
     const inW=getB(Math.floor(m.x),Math.floor(m.y+.2),Math.floor(m.z))===5;
@@ -164,7 +181,7 @@ function mobEvent([k,id,type,x,y,z,by,got]){
   const D=MOB[type]; if(!D) return;
   const near=Math.hypot(x-P.x,z-P.z)<18;
   burst(x-.5,y+(D.fly?-.3:D.h/2-.5),z-.5,k==="puff"?"#7a4a8a":D.c,k==="die"?22:16);
-  if(near) sfx(k==="puff"?"poof":type==="polilla"?"chime":"poof");
+  if(near) sfx(k==="puff"?"poof":type==="polilla"||D.wisp?"chime":"poof");
   if(k==="die"&&by===myId()&&Array.isArray(got)&&got.length){
     got.forEach(([it,n])=>{ if(ITEMS[it]) for(let i=0;i<n;i++) spawnDrop(it,x-.5,y,z-.5); });
     pick("","","+ "+got.filter(([it])=>ITEMS[it]).map(([it,n])=>icon(it,"ic sm")+" "+ITEMS[it].n+(n>1?" ×"+n:"")).join(", ")); sfx("pickup");
@@ -172,10 +189,10 @@ function mobEvent([k,id,type,x,y,z,by,got]){
   if(mobs[id]) mobs[id].gone=true;
 }
 // golpe del jugador local a la criatura que apunta
-function attackMob(m){
+function attackMob(m,dmg=1){
   m.hurt=.25; sfx("thud"); if(m.type==="gallina") sfx("cluck"); else if(m.type==="polilla") sfx("flutter");
   const p=m.g.position; burst(p.x-.5,p.y-.3,p.z-.5,MOB[m.type].c,5);
-  if(simMobs()) hurtMob(m,1,P.x,P.z,myId()); else netSend({t:"mobhit",id:m.id,k:"golpe",x:+P.x.toFixed(2),z:+P.z.toFixed(2)});
+  if(simMobs()) hurtMob(m,dmg,P.x,P.z,myId()); else netSend({t:"mobhit",id:m.id,k:"golpe",dmg,x:+P.x.toFixed(2),z:+P.z.toFixed(2)});
 }
 // una sombra que te alcanza te golpea (3 de vida) y te empuja; vuelve a golpear cada segundo mientras te toque
 function sombraHit(m){
@@ -183,9 +200,9 @@ function sombraHit(m){
   sfx("corrupt"); hurtPlayer(3,"una sombra de bruma");
 }
 // la criatura más cercana que cruza la mira, si está antes que el bloque apuntado
-function mobRay(maxT){
+function mobRay(maxT,reach=3.8){
   const o=camera.position, d=new THREE.Vector3(); camera.getWorldDirection(d);
-  const O=[o.x,o.y,o.z], Dd=[d.x,d.y,d.z]; let best=null, bt=Math.min(maxT,3.8);
+  const O=[o.x,o.y,o.z], Dd=[d.x,d.y,d.z]; let best=null, bt=Math.min(maxT,reach);
   for(const m of Object.values(mobs)){
     if(m.gone||!m.g.visible) continue;
     const M=MOB[m.type], p=m.g.position, r=M.w/2+.1, y0=M.fly?p.y-M.h/2-.15:p.y, lo=[p.x-r,y0,p.z-r], hi=[p.x+r,y0+M.h+.25,p.z+r];
@@ -225,14 +242,17 @@ function mobsTick(dt,now){
     if(m.type==="gallina"){ P2.legL.rotation.x=sw; P2.legR.rotation.x=-sw; P2.head.position.z=-.2-Math.abs(sw)*.04;
       const flap=m.vis>2?Math.abs(Math.sin(m.ph*5))*1.1:0; P2.wingL.rotation.z=-flap; P2.wingR.rotation.z=flap; }
     else if(m.type==="polilla"){ const f=Math.sin(m.ph*6)*.9; P2.wingL.rotation.z=f; P2.wingR.rotation.z=-f; }
+    else if(D.wisp){}
     else { g.position.y=(m.base??g.position.y)+.15+Math.sin(m.ph*.8)*.08; P2.armL.rotation.x=-.3+Math.sin(m.ph*.9)*.25+sw*.4; P2.armR.rotation.x=-.3-Math.sin(m.ph*.9)*.25-sw*.4;
       m.atk=Math.max(0,(m.atk||0)-dt);
       if(!m.gone&&m.atk<=0&&S.hp>0&&Math.hypot(g.position.x-P.x,g.position.z-P.z)<.9&&g.position.y<P.y+HT&&g.position.y+1.7>P.y) sombraHit(m);
       if(Math.random()<dt*.6) spawn(g.position.x+(Math.random()-.5)*.5,g.position.y+.3,g.position.z+(Math.random()-.5)*.5,0,.4,0,h2a("#7a4a8a"),1.2); }
     if(m.type==="polilla"&&Math.random()<dt*2) spawn(g.position.x,g.position.y,g.position.z,0,-.15,0,h2a("#f2d36b"),.9);
+    if(D.wisp){ P2.core.rotation.y+=dt*2; P2.core.rotation.x+=dt*1.3; P2.core.scale.setScalar(1+Math.sin(m.ph*2)*.12); if(Math.random()<dt*5) spawn(g.position.x+(Math.random()-.5)*.3,g.position.y+(Math.random()-.5)*.3,g.position.z+(Math.random()-.5)*.3,0,.15,0,h2a(D.c),.8); }
     // destello al recibir un golpe
     m.hurt=Math.max(0,m.hurt-dt); const red=m.hurt>0?m.hurt/.25:0;
-    for(const mt of m.mats){ if(mt.emissive) mt.emissive.setRGB(red*.8,0,0); else mt.color.copy(mt.userData.c).lerp(HURT,red*.7); }
+    const dk=m.type==="gallina"?Math.min(1,Math.max(curveL(lightAt(Math.floor(g.position.x),Math.floor(g.position.y+.4),Math.floor(g.position.z))[0]),curveL(lightAt(Math.floor(g.position.x),Math.floor(g.position.y+.4),Math.floor(g.position.z))[1]))+.1):1; // en cuevas, más oscura
+    for(const mt of m.mats){ if(mt.emissive){ mt.emissive.setRGB(red*.8,0,0); mt.color.copy(mt.userData.c).multiplyScalar(dk); } else mt.color.copy(mt.userData.c).lerp(HURT,red*.7); }
     // sonidos de cerca
     const dist=Math.hypot(g.position.x-P.x,g.position.z-P.z);
     if(dist<9&&Math.random()<dt*(m.type==="gallina"?.12:m.type==="sombra"?.15:0)) sfx(m.type==="gallina"?"cluck":"whisper");
@@ -255,5 +275,5 @@ NET_ON.mobs=m=>{
 };
 NET_ON.mobhit=m=>{
   const mb=mobs[m.id]; if(!simMobs()||!mb) return;
-  hurtMob(mb,1,m.x,m.z,m.from);
+  hurtMob(mb,Math.max(1,Math.min(3,m.dmg|0||1)),m.x,m.z,m.from);
 };

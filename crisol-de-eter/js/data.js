@@ -35,6 +35,13 @@ const ITEMS = {
   pico_hierro:{n:"Pico de hierro",ab:"P3",e:{metal:3,orden:1},crafted:1,tool:3,d:"Saca obsidiana. Más rápido."},
   pan:{n:"Pan",ab:"Pn",e:{vida:2,orden:1},crafted:1,food:5,d:"Tres semillas horneadas en la mesa."},
   pollo_asado:{n:"Pollo asado",ab:"Pa",e:{vida:2,brasa:1},crafted:1,food:6,d:"Lo que más llena."},
+  metal:{n:"Metal arcano",ab:"Ma",e:{metal:3,energia:2},crafted:1,d:"Hierro templado en esencia. Para el mejor pico."},
+  pico_arcano:{n:"Pico de metal arcano",ab:"P4",e:{metal:3,energia:2,orden:1},crafted:1,tool:4,d:"El más rápido: corta la roca como si fuera tierra."},
+  varita:{n:"Varita de éter",ab:"Va",e:{orden:2,energia:2,metal:1},crafted:1,d:"Lanza el foco elegido con la vis del aura (R; V cambia de foco)."},
+  foco_chispa:{n:"Foco de chispa",ab:"Fc",e:{brasa:3,energia:2},crafted:1,focus:{cost:4,n:"Chispa"},d:"Un rayo que daña a las criaturas a distancia. 4 de vis."},
+  foco_excava:{n:"Foco de excavación",ab:"Fe",e:{roca:3,orden:2},crafted:1,focus:{cost:3,n:"Excavación"},d:"Rompe bloques lejanos como un pico de hierro. 3 de vis."},
+  foco_luz:{n:"Foco de luz",ab:"Fl",e:{luz:3,cefiro:2},crafted:1,focus:{cost:5,n:"Luz"},d:"Deja un orbe de luz donde apuntas. 5 de vis."},
+  gafas:{n:"Gafas de revelación",ab:"Ga",e:{orden:2,luz:2,metal:1},crafted:1,d:"Muestran las esencias de lo que miras."},
   pollo:{n:"Pollo crudo",ab:"Po",e:{vida:2},food:2,d:"Lo sueltan las gallinas. Mejor asado en el horno."},
   manzana:{n:"Manzana",ab:"Mz",e:{vida:2,marea:1},food:4,d:"A veces cae de las hojas."},
   polvo:{n:"Polvo de luz",ab:"Pz",e:{luz:3,cefiro:1},d:"Lo sueltan las polillas de luz que salen de noche."},
@@ -61,7 +68,17 @@ const TOOLS = ["","pico_madera","pico_piedra","pico_hierro","pico_arcano"];
 const CRU = [
   {id:"sal",cat:"cuarzo",cost:{orden:4,marea:4}}, {id:"tiza",cat:"piedra",cost:{orden:3,roca:3}},
   {id:"laton",cat:"hierro",cost:{orden:4,energia:2}}, {id:"vela",cat:"ambar",cost:{orden:3,luz:3}},
-  {id:"vial",cat:"agua",cost:{cefiro:5,vacio:2}}, {id:"fenix",cat:"carbon",cost:{brasa:5,vida:4}}
+  {id:"vial",cat:"agua",cost:{cefiro:5,vacio:2}}, {id:"fenix",cat:"carbon",cost:{brasa:5,vida:4}},
+  {id:"metal",cat:"lingote",cost:{metal:3,energia:3}}
+];
+// Mesa arcana (sección de la mesa de trabajo): objetos + cristales + vis del aura; hay que investigarlas (ess: con qué resuenan)
+const ARC = [
+  {id:"varita",in:{laton:2,palo:1,cr_orden:1,cr_brasa:1},vis:20,ess:["orden","brasa","metal"]},
+  {id:"foco_chispa",in:{cuarzo:1,cr_brasa:2,cr_cefiro:1},vis:15,ess:["brasa","cefiro","energia"]},
+  {id:"foco_excava",in:{cuarzo:1,cr_roca:2,cr_orden:1},vis:15,ess:["roca","orden","metal"]},
+  {id:"foco_luz",in:{cuarzo:1,cr_cefiro:1,polvo:2},vis:10,ess:["cefiro","luz","orden"]},
+  {id:"gafas",in:{laton:2,cuarzo:2,cr_orden:1},vis:10,ess:["orden","luz","metal"]},
+  {id:"pico_arcano",in:{metal:3,palo:2,cr_roca:1,cr_orden:1},vis:25,ess:["metal","energia","orden","roca"],big:1}
 ];
 const INF = [
   {id:"lente",center:"cuarzo",peds:["laton","ambar"],cost:{luz:5,orden:4}},
