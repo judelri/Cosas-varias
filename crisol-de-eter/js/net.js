@@ -98,6 +98,7 @@ const NET_ON={
       let me={}; try { me=JSON.parse(localStorage.getItem(KEY+"-equipo"))||{}; } catch(e) {}
       Object.assign(P,{x:24.5,y:8,z:27.5,yaw:0,pitch:-.12},me.player||{}); P.vy=0;
       if(me.sel) S.sel=me.sel; if(typeof me.mute==="boolean") setMute(me.mute);
+      S.hp=me.hp>0?me.hp:20; S.food=Number.isFinite(me.food)?me.food:20; S.ex=me.ex||0; // vida y comida son de cada jugador
       S.time=m.state.time; save();
       if(!myName()) openPanel("equipo"); else if(panel) renderPanel();
       pick("Conectado a la partida en equipo","g");

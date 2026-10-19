@@ -8,7 +8,7 @@
 const SKY=new Uint8Array(W*H*D), BLK=new Uint8Array(W*H*D);
 const opaqueL=id=>id>0&&!B[id].water&&!B[id].plant&&!B[id].custom&&!B[id].leaves;
 const lightCost=id=>id>0&&(B[id].leaves||B[id].water)?2:1;
-let LIGHTS=[]; // celdas que dan luz (para las chispas de las antorchas)
+let LIGHTS=[], CAVES=[]; // celdas que dan luz (chispas de antorchas) · suelo de cueva sin cielo (donde aparecen sombras)
 const LQ=new Int32Array(W*H*D*2);
 function spread(arr,head,tail){
   while(head<tail){
@@ -33,6 +33,8 @@ function computeLight(){
   tail=0;
   for(let i=0;i<world.length;i++){ const id=world[i]; if(id>0&&B[id].light){ BLK[i]=B[id].light; LQ[tail++]=i; LIGHTS.push(i); } }
   spread(BLK,0,tail);
+  CAVES=[];
+  for(let i=W*D;i<world.length-W*D;i++) if(world[i]===0&&SKY[i]===0&&BLK[i]<7&&world[i+W*D]===0&&opaqueL(world[i-W*D])) CAVES.push(i);
 }
 // recalcula y suma al conjunto los chunks donde cambió la luz
 function relight(dirty){

@@ -70,7 +70,7 @@ const B = [
   {n:"Arena",bl:4,m:"arena",t:["sand"],hard:.5,c:"#d9c98f"},
   {n:"Agua",m:"agua",t:["water"],water:1,c:"#3f72c0"},
   {n:"Tronco",bl:6,m:"madera",t:["log_top","log_side","log_top"],drop:[["ambar",.4]],hard:1,resp:1,c:"#6b4a2b"},
-  {n:"Hojas",bl:7,m:"hoja",t:["leaves"],leaves:1,drop:[["pluma",.4],["semilla",.2]],hard:.25,resp:1,c:"#3e7a2c"},
+  {n:"Hojas",bl:7,m:"hoja",t:["leaves"],leaves:1,drop:[["pluma",.4],["semilla",.2],["manzana",.05]],hard:.25,resp:1,c:"#3e7a2c"},
   {n:"Tablones del taller",m:"madera",t:["planks"],unbreak:1,c:"#a8824f"},
   {n:"Mena de hierro",tier:2,bl:3,m:"roca",t:["ore_iron"],drop:[["hierro",1]],hard:1.6,resp:1,c:"#d9a77a"},
   {n:"Veta de carbón",tier:1,bl:3,m:"roca",t:["ore_coal"],drop:[["carbon",1]],hard:1.3,resp:1,c:"#333"},

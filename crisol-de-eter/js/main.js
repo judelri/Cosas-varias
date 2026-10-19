@@ -23,15 +23,16 @@ function frame(now){
     const vx=(-sy*f+cy*s)*sp+P.kx, vz=(-cy*f-sy*s)*sp+P.kz; P.kx*=Math.max(0,1-dt*6); P.kz*=Math.max(0,1-dt*6);
     P.vy-=(inW?9:24)*dt; P.vy=Math.max(P.vy,inW?-2.5:-20);
     const jump=keys[" "]||jumpBtn;
-    if(jump){ if(P.ground) P.vy=7.6; else if(inW) P.vy=3.2; }
+    if(jump){ if(P.ground){ P.vy=7.6; exhaust(.05); } else if(inW) P.vy=3.2; }
     let bumped=false;
     const nx=P.x+vx*dt; if(!collides(nx,P.y,P.z)) P.x=nx; else bumped=true;
     const nz=P.z+vz*dt; if(!collides(P.x,P.y,nz)) P.z=nz; else bumped=true;
     if(bumped && P.ground && m>.2 && !collides(P.x+vx*.12,P.y+1.05,P.z+vz*.12)) P.vy=7.6;
-    const ny=P.y+P.vy*dt;
+    const ny=P.y+P.vy*dt, wasAir=!P.ground;
     if(collides(P.x,ny,P.z)){ if(P.vy<0){ P.ground=true; const top=Math.floor(ny)+1; if(top<P.y&&!collides(P.x,top,P.z)) P.y=top; } P.vy=0; } else { P.y=ny; P.ground=false; }
     if(P.y<-6){ P.x=24.5;P.y=9;P.z=27.5;P.vy=0; }
-  }
+    vitals(dt,wasAir&&P.ground,inW);
+  } else vitals(dt,false,true);
   P.pitch=Math.max(-1.55,Math.min(1.55,P.pitch));
   shake=Math.max(0,shake-dt);
   camera.position.set(P.x+(Math.random()-.5)*shake*.15,P.y+EYE,P.z+(Math.random()-.5)*shake*.15);
@@ -44,7 +45,7 @@ function frame(now){
     const b=B[target.id]; $("tgtName").textContent=b.n;
     $("tgtHint").textContent = b.use ? "Usar: abrir" : b.water ? "Usar: recoger agua" : b.unbreak ? "" : `Picar${b.drop?" · Escanear":""}`;
   } else { sel.visible=false; $("tgtName").textContent=""; $("tgtHint").textContent=""; }
-  if(mining&&targetMob){ if(atkCd<=0){ atkCd=.45; attackMob(targetMob); } mine.k=null; mine.p=0; }
+  if(mining&&targetMob){ if(atkCd<=0){ atkCd=.45; attackMob(targetMob); exhaust(.1); } mine.k=null; mine.p=0; }
   else if(mining && target && !B[target.id].unbreak && !B[target.id].water && !B[target.id].custom){
     const k=`${target.x},${target.y},${target.z}`; if(mine.k!==k){ mine.k=k; mine.p=0; }
     mine.p+=dt/B[target.id].hard*(has("lente")?2:1);

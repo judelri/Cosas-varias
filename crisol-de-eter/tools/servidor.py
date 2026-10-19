@@ -182,7 +182,7 @@ class Game:
                 # criaturas: las simula el guía y se reenvían tal cual al resto
                 self.broadcast({"t": "mobs", "ms": msg["ms"], "list": msg["list"], "ev": msg.get("ev", [])}, skip=c)
             elif t == "mobhit" and c.id != self.leader and self.leader in self.clients and isinstance(msg.get("id"), str) \
-                    and msg.get("k") in ("golpe", "toque") and isnum(msg.get("x", 0)) and isnum(msg.get("z", 0)):
+                    and msg.get("k") == "golpe" and isnum(msg.get("x", 0)) and isnum(msg.get("z", 0)):
                 self.send(self.clients[self.leader], {"t": "mobhit", "from": c.id, "id": msg["id"][:24], "k": msg["k"],
                                                       "x": msg.get("x", 0), "z": msg.get("z", 0)})
             elif t == "nombre":

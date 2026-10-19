@@ -53,7 +53,12 @@ const SFX={
   flutter(){ for(let i=0;i<4;i++) noise(.03,{at:i*.045,f:2600,q:2,vol:.025}); },
   whisper(){ noise(.9,{f:450,to:950,q:7,vol:.06,att:.25}); },
   poof(){ noise(.35,{f:1300,to:280,q:1.4,vol:.18}); },
-  chime(){ tone(1568,.35,{vol:.04}); tone(2093,.3,{at:.05,vol:.03}); }
+  chime(){ tone(1568,.35,{vol:.04}); tone(2093,.3,{at:.05,vol:.03}); },
+  // jugador
+  hurt(){ tone(240,.18,{type:"square",to:150,vol:.05}); noise(.12,{type:"lowpass",f:900,vol:.18}); },
+  eat(){ for(let i=0;i<3;i++) noise(.06,{at:i*.11,f:1800+Math.random()*600,q:1.5,vol:.12}); },
+  burp(){ tone(140,.25,{type:"sawtooth",to:90,vol:.04}); },
+  death(){ tone(330,.6,{type:"triangle",to:110,vol:.08}); tone(220,.7,{at:.15,type:"triangle",to:70,vol:.06}); }
 };
 function sfx(name,...a){ if(!AC||S.mute||AC.state!=="running") return; try { SFX[name](...a); } catch(e) {} }
 // pájaros de día, grillos de noche, burbujas cerca del crisol

@@ -35,7 +35,7 @@ function raycast(){
   return null;
 }
 function breakBlock(t){
-  const b=B[t.id], k=`${t.x},${t.y},${t.z}`, placed=S.placed[k]; setBlock(t.x,t.y,t.z,0); burst(t.x,t.y,t.z,b.c); S.mined++; sfx("break",t.id);
+  const b=B[t.id], k=`${t.x},${t.y},${t.z}`, placed=S.placed[k]; setBlock(t.x,t.y,t.z,0); burst(t.x,t.y,t.z,b.c); S.mined++; sfx("break",t.id); exhaust(.025);
   const got=[];
   if(placed) delete S.placed[k]; // un bloque puesto solo devuelve el bloque: ni objetos, ni flux, ni reaparece
   else {
@@ -81,6 +81,48 @@ function doScan(){
   scanItems(its);
   for(let i=0;i<12;i++) spawn(target.x+Math.random(),target.y+Math.random(),target.z+Math.random(),0,.6,0,h2a("#cfa75a"),.8);
   hud(); save();
+}
+
+/* ================= Vida y hambre ================= */
+// 20 puntos de vida (10 corazones) y 20 de comida, como Minecraft. ex acumula el cansancio: cada 1 entero es un punto de comida.
+const SPAWN=[24.5,8,27.5];
+let hurtCd=0, regenT=0, starveT=0, fallTop=0;
+function hurtPlayer(n,why){
+  if(S.hp<=0||hurtCd>0||panel==="muerte") return;
+  hurtCd=.5; S.hp=Math.max(0,S.hp-n); sfx("hurt"); shake=.35;
+  const f=$("flash"); f.style.background="#d9534f"; f.style.opacity=.4; setTimeout(()=>{ f.style.opacity=0; setTimeout(()=>f.style.background="",600); },180);
+  if(S.hp<=0) die(why); hud(); save();
+}
+function die(why){
+  S.hp=0; S.deaths=(S.deaths||0)+1; mining=using=false; sfx("death"); deathWhy=why;
+  teamSay(`cayó: ${why}`); openPanel("muerte");
+}
+let deathWhy="";
+// reaparecer en el taller con todo lo que llevabas
+function respawn(){
+  Object.assign(P,{x:SPAWN[0],y:SPAWN[1],z:SPAWN[2],vy:0,kx:0,kz:0,yaw:0,pitch:-.12}); fallTop=SPAWN[1];
+  S.hp=20; S.food=20; S.ex=0; hud(); save();
+}
+const exhaust=n=>{ S.ex+=n; while(S.ex>=1&&S.food>0){ S.ex-=1; S.food--; hud(); } };
+// come lo que más llena sin desperdiciar (o lo que haya)
+function eat(id){
+  if(S.food>=20){ pick("No tienes hambre."); return; }
+  if(!id){ const foods=Object.keys(S.inv).filter(i=>ITEMS[i].food); if(!foods.length){ pick("No tienes comida: caza gallinas, busca manzanas o haz pan."); return; }
+    const need=20-S.food; foods.sort((a,b)=>Math.abs(ITEMS[a].food-need)-Math.abs(ITEMS[b].food-need)); id=foods[0]; }
+  if(!has(id)||!ITEMS[id].food) return;
+  take(id); S.food=Math.min(20,S.food+ITEMS[id].food); S.ex=0; sfx("eat"); setTimeout(()=>sfx("burp"),420);
+  for(let i=0;i<8;i++) spawn(P.x+(Math.random()-.5)*.3,P.y+1.35,P.z+(Math.random()-.5)*.3,(Math.random()-.5),1+Math.random(),(Math.random()-.5),h2a("#c8783c"),.5,9);
+  pick(`Comiste: ${ITEMS[id].n} (+${ITEMS[id].food/2} de comida)`,"g"); hud(); save();
+}
+// cada fotograma: hambre, recuperarse, inanición y caídas
+function vitals(dt,landed,inW){
+  hurtCd=Math.max(0,hurtCd-dt);
+  if(S.hp<=0) return;
+  exhaust(dt/45);
+  if(S.food>=18&&S.hp<20){ regenT+=dt; if(regenT>=3){ regenT=0; S.hp++; exhaust(.6); hud(); } } else regenT=0;
+  if(S.food<=0){ starveT+=dt; if(starveT>=4){ starveT=0; if(S.hp>1){ S.hp--; sfx("hurt"); hud(); pick("Tienes hambre: come algo (C o la mochila)","f"); } } } else starveT=0;
+  if(inW||P.ground&&!landed) fallTop=P.y; else if(!P.ground) fallTop=Math.max(fallTop,P.y);
+  if(landed){ const h=fallTop-P.y; fallTop=P.y; if(h>3.4) hurtPlayer(Math.floor(h-3),"una caída"); }
 }
 
 /* ================= Infusión ================= */

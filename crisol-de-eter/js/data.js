@@ -28,6 +28,8 @@ const ITEMS = {
   obsidiana:{n:"Obsidiana",ab:"Ob",e:{roca:3,brasa:2,caos:1}}, ambar:{n:"Ámbar",ab:"Am",e:{luz:2,vida:1,orden:1}},
   ceniza:{n:"Ceniza de grieta",ab:"Cg",e:{caos:3,vacio:1}},
   corrupta:{n:"Masa corrupta",ab:"Mc",e:{caos:4,vacio:2},d:"Lo que deja el flux. Rica en Caos y Vacío."},
+  pollo:{n:"Pollo crudo",ab:"Po",e:{vida:2},food:2,d:"Lo sueltan las gallinas. Mejor asado en el horno."},
+  manzana:{n:"Manzana",ab:"Mz",e:{vida:2,marea:1},food:4,d:"A veces cae de las hojas."},
   polvo:{n:"Polvo de luz",ab:"Pz",e:{luz:3,cefiro:1},d:"Lo sueltan las polillas de luz que salen de noche."},
   ...Object.fromEntries(["marea","brasa","roca","cefiro","orden","caos"].map(e=>["cr_"+e,{n:"Cristal de "+ESS[e].n,ab:"C"+e[0],e:{[e]:2},crystal:1,d:"Vis cristalizada. Crece en las cuevas y lo sueltan los fuegos fatuos; se usa en la mesa arcana."}])),
   sal:{n:"Sal purificadora",ab:"Sa",e:{orden:2,marea:1},crafted:1,d:"Úsala desde la mochila: −25 flux."},

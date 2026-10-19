@@ -2,6 +2,16 @@
 // Script clásico (sin módulos): comparte el ámbito global con los demás archivos de js/.
 
 /* ================= HUD y paneles ================= */
+// corazones y muslos en píxeles (7×7): lleno, mitad y vacío
+const VIT=(()=>{ const draw=(rows,fill,half)=>{ const c=document.createElement("canvas"); c.width=c.height=9; const x=c.getContext("2d");
+    rows.forEach((r,y)=>[...r].forEach((ch,i)=>{ if(ch===" ") return; x.fillStyle=ch==="o"?"#1a1418":ch==="w"?"#f4f0e6":(half&&i>3?"#3b3346":fill); x.fillRect(i+1,y+1,1,1); }));
+    return c.toDataURL(); };
+  const H=[" oo oo ","o##o##o","o#####o","o#####o"," o###o ","  o#o  ","   o   "], F=["   ooo ","  o###o"," o####o"," o###o ","oww oo ","ow    ","oo     "];
+  return {h:draw(H,"#d9534f"),hh:draw(H,"#d9534f",1),he:draw(H,"#3b3346"),f:draw(F,"#c8783c"),fh:draw(F,"#c8783c",1),fe:draw(F,"#3b3346")}; })();
+function vitalsHTML(){
+  const row=(v,full,half,empty,cls)=>`<span class="${cls}">${Array.from({length:10},(_,i)=>`<img src="${v>=i*2+2?full:v===i*2+1?half:empty}" alt="">`).join("")}</span>`;
+  return row(S.hp,VIT.h,VIT.hh,VIT.he,"hearts")+row(S.food,VIT.f,VIT.fh,VIT.fe,"food");
+}
 function hud(){
   $("fluxbar").style.width=Math.min(100,S.flux)+"%"; $("fluxval").textContent=`${S.flux}/100`;
   const fs=$("fstate"); fs.textContent = S.flux>=80?"Grieta inminente":S.flux>=50?"Bruma: puede corromper objetos":"Estable"; fs.style.color=S.flux>=80?"var(--bad)":S.flux>=50?"var(--flux)":"";
@@ -15,12 +25,14 @@ function hud(){
     + ids.map(i=>`<div class="slot" title="${ITEMS[i].n}">${icon(i)}<span class="n">${has(i)}</span></div>`).join(""));
   setHTML($("mute"),`<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4Z" fill="currentColor"/><path d="${S.mute?"M16 9l5 6M21 9l-5 6":"M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`);
   $("mute").setAttribute("aria-label",S.mute?"Activar el sonido":"Silenciar");
+  setHTML($("vitals"),vitalsHTML()); $("vitals").classList.toggle("low",S.hp<=6);
+  $("vitals").setAttribute("aria-label",`Vida ${S.hp/2} de 10 · Comida ${S.food/2} de 10`);
   teamHud(); updateCauldron();
 }
 function selectBlock(id){ if(!S.bl[id]||id===S.sel) return; S.sel=id; sfx("click"); hud(); save(); }
 function cycleBlock(d){ const bls=Object.keys(S.bl).map(Number); if(bls.length<2) return; selectBlock(bls[(bls.indexOf(S.sel)+d+bls.length)%bls.length]); }
 function openPanel(name){ panel=name; if(document.pointerLockElement) document.exitPointerLock?.(); mining=false; renderPanel(); $("panel").hidden=false; }
-function closePanel(){ panel=null; $("panel").hidden=true; resetAsk=false; $("lockhint").hidden=locked||isTouch; }
+function closePanel(){ if(panel==="muerte"){ panel=null; $("panel").hidden=true; respawn(); return; } panel=null; $("panel").hidden=true; resetAsk=false; $("lockhint").hidden=locked||isTouch; }
 let resetAsk=false, resetting=false;
 function invRows(mode){
   const ids=Object.keys(ITEMS).filter(has);
@@ -35,6 +47,7 @@ function invRows(mode){
       recs.forEach(r=>{ if(!researched(r.id)){ note+=`Sirve de catalizador en una receta sin investigar (estantería del taller). `; return; }
         if(Object.keys(r.cost).every(e=>K.has(e))){ acts+=`<button class="btn${canCat(r)?" pri":""}" data-act="cat" data-id="${r.id}" ${canCat(r)?"":"disabled"}>Catalizar → ${ITEMS[r.id].n}</button>`; if(!canCat(r)) note+=`Para ${ITEMS[r.id].n}: ${Object.entries(r.cost).map(([e,n])=>`${ESS[e].n} ${S.cru[e]||0}/${n}`).join(", ")}. `; } });
     }
+    if(mode==="mochila" && it.food) acts+=`<button class="btn${S.food<20?" pri":""}" data-act="eat" data-id="${id}" ${S.food<20?"":"disabled"}>Comer (+${it.food/2})</button>`;
     if(mode==="mochila" && id==="sal") acts+=`<button class="btn pri" data-act="sal" ${S.flux?"":"disabled"}>Usar (−25 flux)</button>`;
     return `<div class="row">${icon(id)}<div style="min-width:0"><div class="nm">${it.n} <span class="mono" style="color:var(--muted)">×${has(id)}</span></div>
       <div class="chips">${sc?Object.entries(it.e).map(([e,n])=>chip(e,n)).join(""):`<span class="note">Sin escanear</span>`}</div>
@@ -93,28 +106,30 @@ function renderPanel(){
   else if(panel==="grimorio"){
     const K=known();
     h=`<h2>Grimorio</h2>
-    <h3>Controles</h3>${isTouch?`<div class="keys"><kbd>Joystick</kbd><span>Moverte (salta solo al chocar con un bloque)</span><kbd>Arrastrar</kbd><span>Mirar alrededor</span><kbd>Picar</kbd><span>Mantén para romper el bloque al que apuntas</span><kbd>Usar</kbd><span>Abrir crisol, altar o estantería; recoger agua; poner el bloque elegido</span><kbd>Escanear</kbd><span>Aprender las esencias del bloque</span><kbd>Barra</kbd><span>Toca un bloque para elegirlo</span></div>`
-      :`<div class="keys"><kbd>Clic</kbd><span>Capturar el ratón</span><kbd>WASD</kbd><span>Moverte</span><kbd>Espacio</kbd><span>Saltar o nadar</span><kbd>Clic izq.</kbd><span>Mantén para picar</span><kbd>Clic der. / E</kbd><span>Usar: crisol, altar, estantería, agua, o poner el bloque elegido</span><kbd>1–9 / rueda</kbd><span>Elegir bloque</span><kbd>F</kbd><span>Escanear el bloque apuntado</span><kbd>I</kbd><span>Mochila</span><kbd>G</kbd><span>Grimorio</span><kbd>M</kbd><span>Sonido sí / no</span><kbd>Esc / E</kbd><span>Cerrar el panel</span></div>`}
-    <h3>El mundo</h3><ul class="rules"><li>Taller (centro): crisol a la izquierda, altar con 4 pedestales a la derecha, estantería de investigación al fondo.</li><li>Río (oeste): agua y arena.</li><li>Bosque (sur): troncos con ámbar, hojas con plumas y semillas.</li><li>Montaña (noreste): hierro, carbón, cuarzo y piedra chispa.</li><li>Grieta (sureste): ceniza, obsidiana y suelo corrupto. Picar ahí sube el flux.</li><li>Los recursos vuelven a aparecer al minuto.</li><li>Al picar tierra, roca, arena, troncos u hojas te llevas el bloque para ponerlo donde quieras. Lo que pones no suelta objetos ni reaparece.</li><li>Un día dura unos 6 minutos; la noche, más oscura, pasa más rápido. De noche la Grieta se agita: sus bloques sueltan el doble y dan el doble de flux.</li></ul>
+    <h3>Controles</h3>${isTouch?`<div class="keys"><kbd>Joystick</kbd><span>Moverte (salta solo al chocar con un bloque)</span><kbd>Arrastrar</kbd><span>Mirar alrededor</span><kbd>Picar</kbd><span>Mantén para romper el bloque al que apuntas</span><kbd>Usar</kbd><span>Abrir crisol, altar o estantería; recoger agua; poner el bloque elegido</span><kbd>Escanear</kbd><span>Aprender las esencias del bloque</span><kbd>Barra</kbd><span>Toca un bloque para elegirlo</span><kbd>Corazones</kbd><span>Tócalos para comer</span></div>`
+      :`<div class="keys"><kbd>Clic</kbd><span>Capturar el ratón</span><kbd>WASD</kbd><span>Moverte</span><kbd>Espacio</kbd><span>Saltar o nadar</span><kbd>Clic izq.</kbd><span>Mantén para picar</span><kbd>Clic der. / E</kbd><span>Usar: crisol, altar, estantería, agua, o poner el bloque elegido</span><kbd>1–9 / rueda</kbd><span>Elegir bloque</span><kbd>F</kbd><span>Escanear el bloque apuntado</span><kbd>I</kbd><span>Mochila</span><kbd>G</kbd><span>Grimorio</span><kbd>C</kbd><span>Comer</span><kbd>M</kbd><span>Sonido sí / no</span><kbd>Esc / E</kbd><span>Cerrar el panel</span></div>`}
+    <h3>El mundo</h3><ul class="rules"><li>Taller (centro): crisol a la izquierda, altar con 4 pedestales a la derecha, estantería de investigación al fondo.</li><li>Río (oeste): agua y arena.</li><li>Bosque (sur): troncos con ámbar, hojas con plumas y semillas.</li><li>Montaña (noreste): hierro, carbón, cuarzo y piedra chispa.</li><li>Grieta (sureste): ceniza, obsidiana y suelo corrupto. Picar ahí sube el flux.</li><li>Los recursos vuelven a aparecer al minuto.</li><li>Al picar tierra, roca, arena, troncos u hojas te llevas el bloque para ponerlo donde quieras. Lo que pones no suelta objetos ni reaparece.</li><li>Tienes 10 corazones y 10 de comida. La comida baja con el tiempo (y al saltar, picar y pelear); con la comida casi llena te curas, y con hambre pierdes vida. Caer de más de 3 bloques duele. Si caes, reapareces en el taller con todo.</li><li>Un día dura unos 6 minutos; la noche, más oscura, pasa más rápido. De noche la Grieta se agita: sus bloques sueltan el doble y dan el doble de flux.</li></ul>
     <h3>Esencias <span class="mono" style="font-size:.85rem;color:var(--muted)">${K.size}/${ESS_ORDER.length}</span></h3>
     <div class="egrid">${ESS_ORDER.map(e=>{ const E=ESS[e],k=K.has(e); const sub=!k?"Sin descubrir":E.from?(E.from.every(x=>K.has(x))?`${ESS[E.from[0]].n} + ${ESS[E.from[1]].n}`:"Compuesta"):"Primal · "+E.d; return `<div class="ess${k?"":" unk"}">${k?sig(e,24):`<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="#3b3346" stroke-dasharray="2 3"/></svg>`}<div><strong>${k?E.n:"???"}</strong><small>${sub}</small></div></div>`; }).join("")}</div>
-    <h3>Criaturas</h3><ul class="rules"><li>Gallinas en los prados: sueltan plumas y a veces semillas. Huyen si las golpeas.</li><li>Polillas de luz, solo de noche: sueltan Polvo de luz (Luz y Céfiro).</li><li>Sombras de bruma: salen de noche cerca de la Grieta y, con el flux en 50 o más, también de día. Te persiguen; si te alcanzan se llevan un material, suben el flux y se deshacen. Cuatro golpes las deshacen antes. No entran al taller y se disuelven al amanecer.</li><li>Se golpean apuntando y picando; escanear una criatura muestra lo que suelta.</li></ul>
+    <h3>Criaturas</h3><ul class="rules"><li>Gallinas en los prados: sueltan plumas, pollo crudo y a veces semillas. Huyen si las golpeas.</li><li>Polillas de luz, solo de noche: sueltan Polvo de luz (Luz y Céfiro).</li><li>Sombras de bruma: nacen en la oscuridad (cuevas, la noche lejos de antorchas, o con el flux en 50 o más). Te persiguen y golpean (1,5 corazones). Cuatro golpes las deshacen. No entran al taller y el sol las disuelve.</li><li>Se golpean apuntando y picando; escanear una criatura muestra lo que suelta.</li></ul>
     <h3>Recetas del crisol</h3><div class="rows" style="margin:8px 0 16px">${CRU.map(r=>`<div class="row">${icon(r.id)}<div style="min-width:0"><div class="nm">${ITEMS[r.id].n}</div><p class="note">Catalizador: ${ITEMS[r.cat].n}${researched(r.id)?"":" · sin investigar: descífrala en la estantería del taller"}</p>${researched(r.id)?`<div class="chips">${Object.entries(r.cost).map(([e,n])=>chip(e,n)).join("")}</div>`:""}</div></div>`).join("")}</div>
     <h3>Investigación</h3><ul class="rules"><li>Al principio solo conoces la Sal purificadora y la Tiza arcana; las demás recetas se descifran en la estantería.</li><li>Necesitas conocer las esencias con las que resuena la receta y una Pluma para escribir la nota.</li><li>Una nota perdida suma 3 de flux.</li></ul>
     <h3>Flux</h3><ul class="rules"><li>Desbordar el crisol (más de ${CAP}) convierte el exceso en flux.</li><li>Vaciarlo genera un tercio de lo derramado.</li><li>Picar en la Grieta y las infusiones inestables suman flux.</li><li>Desde 50, cada medio minuto la bruma puede corromper un objeto.</li><li>A 100 se abre una grieta: pierdes el crisol y dos objetos.</li><li>Sal purificadora: −25. Amuleto de calma: generas la mitad.</li></ul>
     <h3>Partida</h3><p class="note">${S.mined} bloques picados · ${S.rifts} grietas · ${S.scanned.length} objetos escaneados · ${S.res.length}/${CRU.length+INF.length} recetas investigadas</p>
     ${teamMode?`<p class="note" style="margin-top:6px">Es una partida en equipo: vive en el servidor. Para empezar de cero, ciérralo y ábrelo con <span class="mono">python3 tools/servidor.py --nueva</span>.</p>`:`<div style="margin-top:8px">${resetAsk?`<button class="btn" data-act="reset2" style="border-color:var(--bad)">Sí, borrar la partida</button> <button class="btn" data-act="reset0">Cancelar</button>`:`<button class="btn" data-act="reset1">Empezar de nuevo</button>`}</div>`}`;
   }
+  else if(panel==="muerte"){ h=`<h2>Has caído</h2><p class="hint" style="font-size:1rem">Por ${esc(deathWhy||"algo")}. Conservas todo lo que llevabas.</p><button class="btn pri" data-act="respawn">Reaparecer en el taller</button>`; }
   else if(panel==="win"){ h=`<h2>Corazón de Éter</h2><p class="hint" style="font-size:1rem">Lo forjaste tras picar ${S.mined} bloques${S.rifts?` y sobrevivir a ${S.rifts} grieta(s)`:" sin abrir ninguna grieta"}. El taller sigue abierto.</p><button class="btn pri" data-act="closep">Seguir explorando</button>`; }
   else if(panel==="help"){ h=`<h2>Crisol de Éter</h2><p class="hint" style="font-size:.95rem">Pica bloques para reunir materiales, escanéalos para descubrir sus esencias, disuélvelos en el crisol y forja objetos en el altar. Vigila el flux. La meta es el Corazón de Éter.</p>
     ${isTouch?`<div class="keys"><kbd>Joystick</kbd><span>Moverte</span><kbd>Arrastrar</kbd><span>Mirar</span><kbd>Picar</kbd><span>Mantener para romper</span><kbd>Usar</kbd><span>Crisol, altar, estantería, agua o poner un bloque</span></div>`:`<div class="keys"><kbd>WASD</kbd><span>Moverte · Espacio salta</span><kbd>Clic izq.</kbd><span>Mantén para picar</span><kbd>Clic der. / E</kbd><span>Usar o poner un bloque</span><kbd>1–9</kbd><span>Elegir bloque</span><kbd>F</kbd><span>Escanear</span><kbd>I · G</kbd><span>Mochila · Grimorio</span></div>`}
-    <p class="note" style="margin-bottom:8px">De noche salen sombras de bruma: el taller es un refugio seguro.</p><p class="note" style="margin-bottom:12px">Empiezas en el taller: el crisol está a tu izquierda, el altar a tu derecha y la estantería, donde se investigan las recetas, al fondo.</p><button class="btn pri" data-act="play">Jugar</button>`; }
+    <p class="note" style="margin-bottom:8px">Cuida tus corazones y tu comida. De noche y en las cuevas salen sombras de bruma: el taller y la luz de las antorchas te protegen.</p><p class="note" style="margin-bottom:12px">Empiezas en el taller: el crisol está a tu izquierda, el altar a tu derecha y la estantería, donde se investigan las recetas, al fondo.</p><button class="btn pri" data-act="play">Jugar</button>`; }
   setHTML(pb,h);
   if(panel==="equipo") teamList();
 }
 $("panel").addEventListener("click",ev=>{
   const b=ev.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act,id=b.dataset.id;
-  if(a==="closep") return closePanel();
+  if(a==="closep"||a==="respawn") return closePanel();
+  if(a==="eat"){ eat(id); if(panel) renderPanel(); return; }
   if(a==="play"){ closePanel(); if(!isTouch) canvas.requestPointerLock?.(); return; }
   if(a==="scan") scanItems([id]); else if(a==="dis") dissolve(id); else if(a==="cat") catalyze(id);
   else if(a==="sal") useSal(); else if(a==="empty") emptyCru(); else if(a==="inf") return infuse(id);
@@ -127,6 +142,7 @@ $("panel").addEventListener("click",ev=>{
   hud(); save(); if(panel) renderPanel();
 });
 document.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>{ sfx("click"); openPanel(b.dataset.open); }));
+$("vitals").addEventListener("click",()=>eat()); // en el celular: tocar la comida para comer
 $("mute").addEventListener("click",()=>{ setMute(!S.mute); hud(); save(); });
 $("hotbar").addEventListener("click",e=>{ const b=e.target.closest("[data-bl]"); if(b) selectBlock(+b.dataset.bl); });
 
@@ -153,6 +169,7 @@ document.addEventListener("keydown",e=>{
   if(panel){ if(!e.repeat&&(k==="escape"||k==="e"||(k==="i"&&panel==="mochila")||(k==="g"&&panel==="grimorio"))) closePanel(); return; }
   keys[k]=true;
   if(k==="e") doUse(); else if(k==="f") doScan(); else if(k==="i") openPanel("mochila"); else if(k==="g") openPanel("grimorio"); else if(k==="q") mining=true;
+  else if(k==="c"&&!e.repeat) eat();
   else if(k==="m"&&!e.repeat){ setMute(!S.mute); hud(); save(); }
   else if(/^[1-9]$/.test(k)){ const id=+Object.keys(S.bl)[k-1]; if(id) selectBlock(id); }
   if([" ","arrowup","arrowdown"].includes(k)) e.preventDefault();

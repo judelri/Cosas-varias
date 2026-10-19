@@ -61,6 +61,15 @@ h3{color:var(--brass);font-size:1.1rem}
 .hotbar{left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:4px;max-width:calc(100% - 24px)}
 .slot{width:46px;height:46px;background:#0000007a;border:3px solid;border-color:#ffffff38 #00000070 #00000070 #ffffff38;position:relative;display:grid;place-items:center;box-shadow:0 0 0 1px #000a}
 .slot .ic{width:36px;height:36px;border:0;background:none;padding:0}
+/* corazones y comida, encima de la barra (en el celular, encima del joystick) */
+.vitals{left:50%;bottom:calc(70px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:18px;pointer-events:auto;cursor:pointer}
+.vitals span{display:flex;gap:1px}.vitals .food{flex-direction:row-reverse}
+.vitals img{width:18px;height:18px;image-rendering:pixelated;image-rendering:crisp-edges}
+.vitals.low .hearts{animation:shakeh .5s infinite}
+@keyframes shakeh{0%,100%{transform:translateY(0)}50%{transform:translateY(-1px)}}
+body.touch .vitals{left:calc(16px + env(safe-area-inset-left,0px));bottom:calc(156px + env(safe-area-inset-bottom,0px));transform:none;flex-direction:column;gap:3px}
+body.touch .vitals .food{flex-direction:row}
+body.touch .vitals img{width:14px;height:14px}
 .slot.bl{padding:0;font:inherit;color:inherit;cursor:pointer}
 .slot.bl .ic{width:34px;height:34px}
 .slot.sel{border-color:#fff;box-shadow:0 0 0 2px #fff,0 0 0 4px #000a}
@@ -84,7 +93,7 @@ h3{color:var(--brass);font-size:1.1rem}
 .pk{background:#17141cd0;border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:.85rem;animation:fade 2.6s forwards}
 .pk.f{border-color:var(--flux);color:#f0b6dc}.pk.g{border-color:#4d7a38;color:#c6e8b2}
 @keyframes fade{0%,75%{opacity:1}100%{opacity:0}}
-.lockhint{left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#17141cd0;border:1px solid var(--brass-dim);border-radius:8px;padding:6px 12px;font-size:.85rem}
+.lockhint{left:50%;bottom:calc(100px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#17141cd0;border:1px solid var(--brass-dim);border-radius:8px;padding:6px 12px;font-size:.85rem}
 
 /* táctil */
 .joy{left:calc(20px + env(safe-area-inset-left,0px));bottom:calc(24px + env(safe-area-inset-bottom,0px));width:120px;height:120px;border-radius:50%;background:#ffffff14;border:1px solid #ffffff30;touch-action:none}

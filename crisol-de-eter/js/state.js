@@ -6,7 +6,7 @@ const KEY = "crisol-eter-3d-v1";
 // bl: bloques para poner · sel: bloque elegido · placed: bloques puestos por el jugador · time: hora (0 amanecer, .5 anochecer)
 // res: recetas investigadas · rsch: investigación en curso
 const fresh = () => ({inv:{},scanned:[],cru:{},flux:5,world:{},resp:{},mined:0,rifts:0,won:false,player:null,
-  bl:{},sel:0,placed:{},time:.06,mute:false,res:["sal","tiza"],rsch:null});
+  bl:{},sel:0,placed:{},time:.06,mute:false,res:["sal","tiza"],rsch:null,hp:20,food:20,ex:0,deaths:0});
 let S = fresh();
 try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(fresh(), JSON.parse(raw)); } catch(e) {}
 for (const k of Object.keys(S.inv)) if (!(S.inv[k]>0)) delete S.inv[k];
@@ -17,7 +17,7 @@ if (window.claude?.hot?.data?.S) S = window.claude.hot.data.S;
 window.claude?.hot?.snapshot?.(() => ({S}));
 // En una partida en equipo (js/net.js) lo compartido vive en el servidor: aquí solo se guarda lo personal
 let teamMode=false;
-const save = () => { try { localStorage.setItem(teamMode?KEY+"-equipo":KEY, JSON.stringify(teamMode?{player:S.player,sel:S.sel,mute:S.mute}:S)); } catch(e) {} };
+const save = () => { try { localStorage.setItem(teamMode?KEY+"-equipo":KEY, JSON.stringify(teamMode?{player:S.player,sel:S.sel,mute:S.mute,hp:S.hp,food:S.food,ex:S.ex}:S)); } catch(e) {} };
 
 const $ = id => document.getElementById(id);
 // cambia el HTML solo si es distinto: así no se reinician imágenes ni animaciones al refrescar
@@ -62,6 +62,12 @@ const ICONC={}, ICON={};
   C.obsidiana=lump("#2a1d3a","#8a5ab8",.86); C.corrupta=lump("#6a3a80","#2a1638",.75);
   C.cuarzo=crystal("#ece7da"); C.chispa=crystal("#59d0d6");
   for(const e of PRIMAL) C["cr_"+e]=crystal(ESS[e].c);
+  // comida: muslo (crudo rosado, asado dorado), pan, manzana
+  const leg=(meat)=>mk((x,y)=>((x-9.5)/4.6)**2+((y-6.5)/4.2)**2<1||(Math.abs((x-y)-(-1))<1.3&&x>3&&x<8&&y>5)||((x-3.5)**2+(y-12.5)**2<2.2),
+    (x,y)=> x<7.5&&y>8.5 ? "#f4f0e6" : sh(meat,1.15-(y-2)/16));
+  C.pollo=leg("#e8a0a0"); C.pollo_asado=leg("#c8783c");
+  C.pan=mk((x,y)=>((x-8)/6.6)**2+((y-9.5)/3.8)**2<1,(x,y)=>(Math.abs(x-6)<.6||Math.abs(x-10)<.6)&&y<9?"#8a5a2a":sh("#d6a050",1.2-(y-6)/14));
+  C.manzana=mk((x,y)=>((x-8)/5.2)**2+((y-10)/4.8)**2<1||(x>=8&&x<9&&y>2&&y<6),(x,y)=> y<6 ? "#5e4127" : (x-6)**2+(y-8)**2<2.2 ? "#ffb0a0" : sh("#c8202c",1.15-(y-5)/16));
   C.ceniza=dust("#6d6178","#b4a2c4"); C.sal=dust("#e9e6df","#ffffff"); C.polvo=dust("#e8c85a","#fff6c0");
   C.agua=drop("#4f8ad6");
   C.ambar=mk((x,y)=>((x-8)/5)**2+((y-8.5)/5.6)**2<1,(x,y)=>(x-6.5)**2+(y-6.5)**2<2?"#fff1b8":sh("#e8a33a",1.15-(y-3)/16));
