@@ -1,12 +1,17 @@
-// Crisol de Éter — Estado guardado, utilidades, iconos pixelados y mecánicas (escaneo, crisol, flux).
+// Crisol de Éter — Estado guardado, utilidades, iconos pixelados y mecánicas (escaneo, crisol, flux, investigación).
 // Script clásico (sin módulos): comparte el ámbito global con los demás archivos de js/.
 
 /* ================= Estado ================= */
 const KEY = "crisol-eter-3d-v1";
-const fresh = () => ({inv:{},scanned:[],cru:{},flux:5,world:{},resp:[],mined:0,rifts:0,won:false,player:null});
+// bl: bloques para poner · sel: bloque elegido · placed: bloques puestos por el jugador · time: hora (0 amanecer, .5 anochecer)
+// res: recetas investigadas · rsch: investigación en curso
+const fresh = () => ({inv:{},scanned:[],cru:{},flux:5,world:{},resp:[],mined:0,rifts:0,won:false,player:null,
+  bl:{},sel:0,placed:{},time:.06,mute:false,res:["sal","tiza"],rsch:null});
 let S = fresh();
 try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(fresh(), JSON.parse(raw)); } catch(e) {}
 for (const k of Object.keys(S.inv)) if (!(S.inv[k]>0)) delete S.inv[k];
+// partidas de antes de la investigación: lo que ya forjaste queda investigado
+S.scanned.forEach(i=>{ if((CRU.some(r=>r.id===i)||INF.some(r=>r.id===i)) && !S.res.includes(i)) S.res.push(i); });
 if (window.claude?.hot?.data?.S) S = window.claude.hot.data.S;
 window.claude?.hot?.snapshot?.(() => ({S}));
 let saveT = 0; const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} };
@@ -82,7 +87,7 @@ function addFlux(n, why){
   hud();
 }
 function rift(){
-  S.rifts++; S.flux = 60; S.cru = {};
+  sfx("rift"); S.rifts++; S.flux = 60; S.cru = {};
   const pool = Object.keys(S.inv).filter(i=>i!=="corazon"); const lost=[];
   for (let k=0;k<2&&pool.length;k++){ const p=pool[rnd(pool.length)]; take(p); lost.push(ITEMS[p].n); if(!has(p)) pool.splice(pool.indexOf(p),1); }
   pick("¡Se abrió una grieta! El crisol se vació"+(lost.length?" y perdiste "+lost.join(", "):""),"f");
@@ -92,6 +97,7 @@ let scanT;
 function scanItems(ids){
   const before=known(), nuevosItems=[];
   ids.forEach(i=>{ if(!S.scanned.includes(i)){ S.scanned.push(i); nuevosItems.push(i); } });
+  sfx("scan");
   const K=known(), nuevas=[...K].filter(e=>!before.has(e));
   const rows=ids.map(id=>{ const it=ITEMS[id], nw=nuevosItems.includes(id);
     return `<div class="srow">${icon(id,"ic lg")}<div style="min-width:0"><b>${it.n}</b><span class="tag${nw?" new":""}">${nw?"Nuevo":"Ya conocido"}</span>
@@ -106,20 +112,50 @@ function scanItems(ids){
 function dissolve(id){
   take(id);
   for (const [e,n] of Object.entries(ITEMS[id].e)) S.cru[e]=(S.cru[e]||0)+n;
-  crucibleSplash(ITEMS[id].e);
+  crucibleSplash(ITEMS[id].e); sfx("dissolve");
   let over = sum(S.cru)-CAP;
   if (over>0){ const ex=over; while(over-->0){ const ks=Object.keys(S.cru); const k=ks[rnd(ks.length)]; if(--S.cru[k]<=0) delete S.cru[k]; } addFlux(ex,"el crisol se desbordó"); }
 }
-const canCat = r => has(r.cat)>0 && Object.entries(r.cost).every(([e,n])=>(S.cru[e]||0)>=n);
+const canCat = r => researched(r.id) && has(r.cat)>0 && Object.entries(r.cost).every(([e,n])=>(S.cru[e]||0)>=n);
 function catalyze(rid){
   const r=CRU.find(x=>x.id===rid); if(!canCat(r)) return;
   take(r.cat); for(const [e,n] of Object.entries(r.cost)){ S.cru[e]-=n; if(S.cru[e]<=0) delete S.cru[e]; }
   give(r.id); if(!S.scanned.includes(r.id)) S.scanned.push(r.id);
-  pick(`El crisol forjó: ${ITEMS[r.id].n}`,"g"); crucibleSplash({luz:4,orden:4});
+  pick(`El crisol forjó: ${ITEMS[r.id].n}`,"g"); crucibleSplash({luz:4,orden:4}); sfx("forge");
 }
-function emptyCru(){ const t=sum(S.cru); S.cru={}; addFlux(Math.ceil(t/3),"esencia derramada"); }
-function useSal(){ take("sal"); const d=Math.min(25,S.flux); S.flux-=d; pick(`Sal purificadora: −${d} flux`,"g"); }
+function emptyCru(){ const t=sum(S.cru); S.cru={}; sfx("water"); addFlux(Math.ceil(t/3),"esencia derramada"); }
+function useSal(){ take("sal"); const d=Math.min(25,S.flux); S.flux-=d; pick(`Sal purificadora: −${d} flux`,"g"); sfx("forge"); }
 function infNeeds(r){ const n={}; [r.center,...r.peds].forEach(i=>n[i]=(n[i]||0)+1); return n; }
 function stabilizers(r){ return Math.max(0, Math.min(2, has("vela")-(infNeeds(r).vela||0))); }
 function instability(r){ return Math.max(5, Math.min(90, r.peds.length*8 + Math.round(sum(r.cost)/2) - stabilizers(r)*15)); }
-const canInfuse = r => Object.entries(infNeeds(r)).every(([i,n])=>has(i)>=n) && Object.entries(r.cost).every(([e,n])=>(S.cru[e]||0)>=n);
+const canInfuse = r => researched(r.id) && Object.entries(infNeeds(r)).every(([i,n])=>has(i)>=n) && Object.entries(r.cost).every(([e,n])=>(S.cru[e]||0)>=n);
+
+/* ================= Investigación ================= */
+// Cada receta resuena con una secuencia secreta de esencias, sacada de su costo y de su catalizador (o centro).
+// Se descifra en la estantería del taller probando secuencias: 2 = en su lugar, 1 = está en otro lugar, 0 = no está.
+const recipe = id => CRU.find(r=>r.id===id) || INF.find(r=>r.id===id);
+const researched = id => S.res.includes(id);
+function resPool(r){ const s=new Set([...Object.keys(r.cost),...Object.keys(ITEMS[r.cat||r.center].e)]); return ESS_ORDER.filter(e=>s.has(e)); }
+const resLen = r => r.cat ? 3 : 4;
+const resTries = r => r.cat ? 5 : r.final ? 7 : 6;
+const canResearch = r => !researched(r.id) && resPool(r).every(e=>known().has(e));
+function startResearch(id){
+  const r=recipe(id); if(S.rsch||!canResearch(r)||!has("pluma")) return;
+  take("pluma"); const pool=resPool(r);
+  S.rsch={id,secret:Array.from({length:resLen(r)},()=>pool[rnd(pool.length)]),guesses:[],cur:[]}; sfx("scan");
+}
+function resFeedback(secret,guess){
+  const fb=guess.map((e,i)=>e===secret[i]?2:0), left={};
+  secret.forEach((e,i)=>{ if(fb[i]!==2) left[e]=(left[e]||0)+1; });
+  guess.forEach((e,i)=>{ if(fb[i]!==2&&left[e]){ fb[i]=1; left[e]--; } });
+  return fb;
+}
+function guessResearch(){
+  const R=S.rsch; if(!R) return; const r=recipe(R.id); if(R.cur.length<resLen(r)) return;
+  const fb=resFeedback(R.secret,R.cur); R.guesses.push({g:R.cur,fb}); R.cur=[];
+  if(fb.every(v=>v===2)){ S.res.push(R.id); S.rsch=null; pick(`Investigación completa: ya puedes forjar ${ITEMS[r.id].n}`,"g"); sfx("success"); return; }
+  if(R.guesses.length>=resTries(r)){ S.rsch=null; pick("La nota se emborronó y la resonancia se perdió","f"); sfx("fail"); addFlux(3,"investigación fallida"); return; }
+  sfx("pulse");
+}
+function quitResearch(){ if(!S.rsch) return; S.rsch=null; pick("Abandonaste la nota"); sfx("fail"); }
+

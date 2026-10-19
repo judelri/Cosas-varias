@@ -1,4 +1,4 @@
-// Crisol de Éter — Atlas de texturas procedurales 16×16 y definición de bloques.
+// Crisol de Éter — Atlas de texturas procedurales 16×16, definición de bloques e iconos de bloque.
 // Script clásico (sin módulos): comparte el ámbito global con los demás archivos de js/.
 
 /* ================= Atlas de texturas ================= */
@@ -49,29 +49,41 @@ for(let y=4;y<8;y++) for(let x=6;x<11;x++) if(!((x===6||x===10)&&(y===4||y===7))
 function tileTex(name){ const c=document.createElement("canvas"); c.width=c.height=16; c.getContext("2d").drawImage(atlas,TI[name]*16,0,16,16,0,0,16,16); const t=new THREE.CanvasTexture(c); t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter; return t; }
 
 /* ================= Bloques ================= */
+// bl: bloque que te llevas al picarlo (para ponerlo después) · m: material, para el sonido
 const B = [
   null,
-  {n:"Hierba",t:["grass_top","grass_side","dirt"],drop:[["semilla",.5]],hard:.5,resp:1,c:"#5f9e3f"},
-  {n:"Tierra",t:["dirt"],hard:.5,c:"#7a5634"},
-  {n:"Roca",t:["stone"],drop:[["piedra",1]],hard:1.1,c:"#7f7d82"},
-  {n:"Arena",t:["sand"],hard:.5,c:"#d9c98f"},
-  {n:"Agua",t:["water"],water:1,c:"#3f72c0"},
-  {n:"Tronco",t:["log_top","log_side","log_top"],drop:[["ambar",.4]],hard:1,resp:1,c:"#6b4a2b"},
-  {n:"Hojas",t:["leaves"],leaves:1,drop:[["pluma",.4],["semilla",.2]],hard:.25,resp:1,c:"#3e7a2c"},
-  {n:"Tablones del taller",t:["planks"],unbreak:1,c:"#a8824f"},
-  {n:"Mena de hierro",t:["ore_iron"],drop:[["hierro",1]],hard:1.6,resp:1,c:"#d9a77a"},
-  {n:"Veta de carbón",t:["ore_coal"],drop:[["carbon",1]],hard:1.3,resp:1,c:"#333"},
-  {n:"Veta de cuarzo",t:["ore_quartz"],drop:[["cuarzo",1]],hard:1.5,resp:1,c:"#f4f0e6"},
-  {n:"Piedra chispa",t:["ore_spark"],drop:[["chispa",1]],hard:1.6,resp:1,c:"#59d0d6"},
-  {n:"Obsidiana",t:["obsidian"],drop:[["obsidiana",1]],hard:2.4,resp:1,flux:1,c:"#3a2650"},
-  {n:"Ceniza de grieta",t:["ash"],drop:[["ceniza",1]],hard:.7,resp:1,flux:2,c:"#8a7898"},
-  {n:"Suelo corrupto",t:["corrupt_top","corrupt_side","dirt"],drop:[["corrupta",.25]],hard:.8,resp:1,flux:1,c:"#7a4590"},
-  {n:"Estantería",t:["planks","bookshelf","planks"],unbreak:1,use:"grimorio",c:"#a8824f"},
-  {n:"Crisol",custom:1,unbreak:1,use:"crisol"},
-  {n:"Altar de infusión",custom:1,unbreak:1,use:"altar"},
-  {n:"Pedestal",custom:1,unbreak:1,use:"altar"},
-  {n:"Ladrillo del taller",t:["bricks"],unbreak:1,c:"#8e867b"},
-  {n:"Hierba alta",t:["tallgrass"],plant:1,drop:[["semilla",.35]],hard:.05,resp:1,c:"#5d9b3a"},
-  {n:"Amapola",t:["flower_red"],plant:1,drop:[["semilla",.5]],hard:.05,resp:1,c:"#c8202c"},
-  {n:"Diente de león",t:["flower_yellow"],plant:1,drop:[["pluma",.5]],hard:.05,resp:1,c:"#f2d33a"}
+  {n:"Hierba",bl:2,m:"tierra",t:["grass_top","grass_side","dirt"],drop:[["semilla",.5]],hard:.5,resp:1,c:"#5f9e3f"},
+  {n:"Tierra",bl:2,m:"tierra",t:["dirt"],hard:.5,c:"#7a5634"},
+  {n:"Roca",bl:3,m:"roca",t:["stone"],drop:[["piedra",1]],hard:1.1,c:"#7f7d82"},
+  {n:"Arena",bl:4,m:"arena",t:["sand"],hard:.5,c:"#d9c98f"},
+  {n:"Agua",m:"agua",t:["water"],water:1,c:"#3f72c0"},
+  {n:"Tronco",bl:6,m:"madera",t:["log_top","log_side","log_top"],drop:[["ambar",.4]],hard:1,resp:1,c:"#6b4a2b"},
+  {n:"Hojas",bl:7,m:"hoja",t:["leaves"],leaves:1,drop:[["pluma",.4],["semilla",.2]],hard:.25,resp:1,c:"#3e7a2c"},
+  {n:"Tablones del taller",m:"madera",t:["planks"],unbreak:1,c:"#a8824f"},
+  {n:"Mena de hierro",bl:3,m:"roca",t:["ore_iron"],drop:[["hierro",1]],hard:1.6,resp:1,c:"#d9a77a"},
+  {n:"Veta de carbón",bl:3,m:"roca",t:["ore_coal"],drop:[["carbon",1]],hard:1.3,resp:1,c:"#333"},
+  {n:"Veta de cuarzo",bl:3,m:"roca",t:["ore_quartz"],drop:[["cuarzo",1]],hard:1.5,resp:1,c:"#f4f0e6"},
+  {n:"Piedra chispa",bl:3,m:"roca",t:["ore_spark"],drop:[["chispa",1]],hard:1.6,resp:1,c:"#59d0d6"},
+  {n:"Obsidiana",bl:13,m:"roca",t:["obsidian"],drop:[["obsidiana",1]],hard:2.4,resp:1,flux:1,c:"#3a2650"},
+  {n:"Ceniza de grieta",m:"arena",t:["ash"],drop:[["ceniza",1]],hard:.7,resp:1,flux:2,c:"#8a7898"},
+  {n:"Suelo corrupto",bl:2,m:"tierra",t:["corrupt_top","corrupt_side","dirt"],drop:[["corrupta",.25]],hard:.8,resp:1,flux:1,c:"#7a4590"},
+  {n:"Estantería",m:"madera",t:["planks","bookshelf","planks"],unbreak:1,use:"investigar",c:"#a8824f"},
+  {n:"Crisol",m:"roca",custom:1,unbreak:1,use:"crisol"},
+  {n:"Altar de infusión",m:"roca",custom:1,unbreak:1,use:"altar"},
+  {n:"Pedestal",m:"roca",custom:1,unbreak:1,use:"altar"},
+  {n:"Ladrillo del taller",m:"roca",t:["bricks"],unbreak:1,c:"#8e867b"},
+  {n:"Hierba alta",m:"hoja",t:["tallgrass"],plant:1,drop:[["semilla",.35]],hard:.05,resp:1,c:"#5d9b3a"},
+  {n:"Amapola",m:"hoja",t:["flower_red"],plant:1,drop:[["semilla",.5]],hard:.05,resp:1,c:"#c8202c"},
+  {n:"Diente de león",m:"hoja",t:["flower_yellow"],plant:1,drop:[["pluma",.5]],hard:.05,resp:1,c:"#f2d33a"}
 ];
+
+/* iconos isométricos de los bloques que se pueden poner (32×32) */
+const BICON={};
+for(const id of new Set(B.filter(b=>b&&b.bl).map(b=>b.bl))){
+  const t=B[id].t, top=TI[t[0]], side=TI[t.length===1?t[0]:t[1]];
+  const c=document.createElement("canvas"); c.width=c.height=32; const x=c.getContext("2d"); x.imageSmoothingEnabled=false;
+  const face=(tile,m,dark)=>{ x.setTransform(...m); x.drawImage(atlas,tile*16,0,16,16,0,0,16,16); x.fillStyle=`rgba(0,0,0,${dark})`; x.fillRect(0,0,16,16); };
+  face(top,[15/16,7.5/16,-15/16,7.5/16,16,1],0); face(side,[15/16,7.5/16,0,15/16,1,8.5],.25); face(side,[15/16,-7.5/16,0,15/16,16,16],.42);
+  BICON[id]=c.toDataURL();
+}
+const bicon = (id,cls="ic") => `<img class="${cls}" src="${BICON[id]}" alt="${B[id].n}" title="${B[id].n}">`;

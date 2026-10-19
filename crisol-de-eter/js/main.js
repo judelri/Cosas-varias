@@ -1,10 +1,10 @@
-// Crisol de Éter — Bucle principal de juego.
+// Crisol de Éter — Bucle principal de juego: movimiento, minado, tiempo del mundo, día y noche, sonido de ambiente.
 // Script clásico (sin módulos): comparte el ámbito global con los demás archivos de js/.
 
 /* ================= Bucle ================= */
 function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); ARM_BASE.x=Math.min(.42,.58*Math.tan(35*Math.PI/180)*camera.aspect*.62); ARM_BASE.y=camera.aspect<1?-.27:-.4; armG.scale.setScalar(camera.aspect<1?.55:1); }
 addEventListener("resize",resize); resize();
-let last=performance.now(), tick1=0, tick30=0, savet=0;
+let last=performance.now(), tick1=0, tick30=0, savet=0, lastStep=0;
 function persist(){ if(resetting) return; S.player={x:P.x,y:P.y,z:P.z,yaw:P.yaw,pitch:P.pitch}; save(); }
 addEventListener("pagehide",persist); document.addEventListener("visibilitychange",()=>{ if(document.hidden) persist(); });
 function frame(now){
@@ -43,31 +43,37 @@ function frame(now){
     const k=`${target.x},${target.y},${target.z}`; if(mine.k!==k){ mine.k=k; mine.p=0; }
     mine.p+=dt/B[target.id].hard*(has("lente")?2:1);
     if(Math.random()<.3) burst(target.x,target.y,target.z,B[target.id].c,1);
+    mine.snd=(mine.snd||0)-dt; if(mine.snd<=0){ sfx("hit",target.id); mine.snd=.24; }
     if(mine.p>=1){ breakBlock(target); mine.k=null; mine.p=0; }
   } else { mine.k=null; mine.p=0; }
   $("mineWrap").hidden=!mine.k; $("mineBar").style.width=(mine.p*100)+"%";
   if(mine.k&&target){ crackMesh.visible=true; crackMesh.position.set(target.x+.5,target.y+.5,target.z+.5); crackTex.offset.x=Math.min(9,Math.floor(mine.p*10))/10; } else crackMesh.visible=false;
   useCd=Math.max(0,useCd-dt);
+  // mantener Usar pone bloques seguidos (o sigue recogiendo agua)
+  if(using&&!panel&&useCd<=0&&target&&(target.id===5||(S.bl[S.sel]&&!B[target.id].use))) doUse();
 
   // tiempo del mundo
   tick1+=dt; tick30+=dt; savet+=dt;
   if(tick1>1){ tick1=0; const now2=Date.now();
     S.resp=S.resp.filter(r=>{ if(now2<r.t) return true; const [x,y,z]=r.k.split(",").map(Number); if(getB(x,y,z)!==0) return false;
-      if(x>=Math.floor(P.x-RAD)&&x<=Math.floor(P.x+RAD)&&z>=Math.floor(P.z-RAD)&&z<=Math.floor(P.z+RAD)&&y>=Math.floor(P.y)&&y<=Math.floor(P.y+HT)) return true; setBlock(x,y,z,r.id); return false; }); }
-  if(tick30>30){ tick30=0; if(S.flux>=50 && Math.random()<.35){ const raws=Object.keys(S.inv).filter(i=>!ITEMS[i].crafted&&i!=="corrupta"); if(raws.length){ const v=raws[rnd(raws.length)]; take(v); give("corrupta"); pick(`La bruma corrompió: ${ITEMS[v].n}`,"f"); hud(); } } }
+      if(inBody(x,y,z)) return true; setBlock(x,y,z,r.id); return false; });
+    if($("clock").textContent!==dayPart()) hud(); }
+  if(tick30>30){ tick30=0; if(S.flux>=50 && Math.random()<.35){ const raws=Object.keys(S.inv).filter(i=>!ITEMS[i].crafted&&i!=="corrupta"); if(raws.length){ const v=raws[rnd(raws.length)]; take(v); give("corrupta"); pick(`La bruma corrompió: ${ITEMS[v].n}`,"f"); sfx("corrupt"); hud(); } } }
   if(savet>5){ savet=0; persist(); }
 
   // ambiente
-  const fl=Math.round(Math.min(1,S.flux/100)*75)/100; if(fl!==skyFlux){ skyFlux=fl; paintSky(fl); }
-  skyG.position.copy(camera.position); cloudTex.offset.x+=dt*.0015;
+  S.time=(S.time+dt/DAY_LEN*(daylight<.5?2:1))%1;
+  skyG.position.copy(camera.position); updateSky(); cloudTex.offset.x+=dt*.0015;
+  ambient(dt,daylight,Math.hypot(P.x-CRUC[0]-.5,P.z-CRUC[2]-.5)<6,sum(S.cru)>0);
   updateDrops(dt);
   // brazo
   walkPh+=dt*moveAmt*9;
+  const st=Math.floor(walkPh/Math.PI); if(st!==lastStep){ lastStep=st; const u=getB(Math.floor(P.x),Math.floor(P.y-.05),Math.floor(P.z)); if(u>0) sfx("step",u); }
   let sw=0; if(mining&&target&&!panel) sw=Math.abs(Math.sin(now/1000*Math.PI*3.2)); else if(useSwing>0){ useSwing-=dt; sw=Math.sin(Math.max(0,1-useSwing/.25)*Math.PI); }
   armG.visible=!panel;
   armG.rotation.set(ARM_BASE.rx-sw*.9,ARM_BASE.ry+sw*.35,0);
   armG.position.set(ARM_BASE.x+Math.cos(walkPh)*.015,ARM_BASE.y+Math.abs(Math.sin(walkPh))*.03-sw*.05,ARM_BASE.z-sw*.1);
-  if(Math.random()<.5) spawn(RIFT[0]+(Math.random()-.5)*12,4+Math.random()*2,RIFT[1]+(Math.random()-.5)*12,0,.5+Math.random()*.6,0,h2a(Math.random()<.5?"#9a62b0":"#7476a8"),3);
+  if(Math.random()<(daylight<.3?.95:.5)) spawn(RIFT[0]+(Math.random()-.5)*12,4+Math.random()*2,RIFT[1]+(Math.random()-.5)*12,0,.5+Math.random()*.6,0,h2a(Math.random()<.5?"#9a62b0":"#7476a8"),3);
   if(S.flux>=50 && Math.random()<S.flux/150) spawn(P.x+(Math.random()-.5)*14,P.y+Math.random()*4,P.z+(Math.random()-.5)*14,0,.2,0,h2a("#c4579f"),2.5);
   if(sum(S.cru)&&Math.random()<.25){ const c=mixRGB(); spawn(CRUC[0]+.3+Math.random()*.4,liquid.position.y+CRUC[1]+.05,CRUC[2]+.3+Math.random()*.4,0,.5,0,c,.8); }
   floaters.forEach((fl2,i)=>{ fl2.m.rotation.y+=dt*1.5; fl2.m.rotation.x+=dt*.7; fl2.m.position.y=fl2.base+Math.sin(now/400+i)*.06; });
@@ -79,7 +85,7 @@ function frame(now){
   renderer.render(scene,camera);
   requestAnimationFrame(frame);
 }
-hud();
+updateSky(); hud();
 if(!S.player) openPanel("help");
 else if(!isTouch) $("lockhint").hidden=false;
 requestAnimationFrame(frame);

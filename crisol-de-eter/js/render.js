@@ -1,4 +1,4 @@
-// Crisol de Éter — Escena Three.js: cielo, mallado con oclusión ambiental, taller, partículas, grietas, brazo y drops.
+// Crisol de Éter — Escena Three.js: cielo con día y noche, mallado con oclusión ambiental, taller, partículas, grietas, brazo y drops.
 // Script clásico (sin módulos): comparte el ámbito global con los demás archivos de js/.
 
 /* ================= Three.js ================= */
@@ -9,9 +9,10 @@ catch(e){ document.body.innerHTML='<div class="err"><div><h2>Tu navegador no pud
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 const scene=new THREE.Scene();
 const SKY_TOP=new THREE.Color("#78a7ff"), SKY_HOR=new THREE.Color("#c3d9ff"), FLUX_TOP=new THREE.Color("#2e1a3e"), FLUX_HOR=new THREE.Color("#7a4a8a");
+const NIGHT_TOP=new THREE.Color("#04061a"), NIGHT_HOR=new THREE.Color("#161c38"), DUSK=new THREE.Color("#f0915a");
 scene.background=SKY_HOR.clone(); scene.fog=new THREE.Fog(SKY_HOR.clone(),34,96);
 const camera=new THREE.PerspectiveCamera(70,1,.05,400); camera.rotation.order="YXZ"; scene.add(camera);
-scene.add(new THREE.AmbientLight(0xffffff,.62));
+const ambL=new THREE.AmbientLight(0xffffff,.62); scene.add(ambL);
 const sunL=new THREE.DirectionalLight(0xfff2dd,.55); sunL.position.set(.5,1,.3); scene.add(sunL);
 
 /* cielo, sol y nubes */
@@ -20,17 +21,21 @@ const skyGeo=new THREE.SphereGeometry(180,24,12);
 skyGeo.setAttribute("color",new THREE.Float32BufferAttribute(new Float32Array(skyGeo.attributes.position.count*3),3));
 const skyMesh=new THREE.Mesh(skyGeo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.BackSide,fog:false,depthWrite:false}));
 skyMesh.renderOrder=-2; skyG.add(skyMesh);
-let skyFlux=-1;
-function paintSky(f){
-  const top=SKY_TOP.clone().lerp(FLUX_TOP,f), hor=SKY_HOR.clone().lerp(FLUX_HOR,f), p=skyGeo.attributes.position, c=skyGeo.attributes.color, tmp=new THREE.Color();
+function paintSky(top,hor){
+  const p=skyGeo.attributes.position, c=skyGeo.attributes.color, tmp=new THREE.Color();
   for(let i=0;i<p.count;i++){ const t=Math.max(0,Math.min(1,p.getY(i)/180*2.2)); tmp.copy(hor).lerp(top,t); c.setXYZ(i,tmp.r,tmp.g,tmp.b); }
   c.needsUpdate=true; scene.fog.color.copy(hor); scene.background.copy(hor);
 }
-const sunDir=new THREE.Vector3(.45,.72,-.52).normalize();
+const sunDir=new THREE.Vector3();
 const sunMesh=new THREE.Mesh(new THREE.PlaneGeometry(22,22),new THREE.MeshBasicMaterial({color:"#fff7d0",fog:false,depthWrite:false}));
 const sunHalo=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshBasicMaterial({color:"#fff2b0",fog:false,transparent:true,opacity:.22,depthWrite:false}));
-sunMesh.position.copy(sunDir).multiplyScalar(165); sunHalo.position.copy(sunDir).multiplyScalar(166);
-sunMesh.lookAt(0,0,0); sunHalo.lookAt(0,0,0); sunMesh.renderOrder=sunHalo.renderOrder=-1; skyG.add(sunHalo,sunMesh);
+const moonMesh=new THREE.Mesh(new THREE.PlaneGeometry(14,14),new THREE.MeshBasicMaterial({color:"#dfe6f5",fog:false,depthWrite:false}));
+sunMesh.renderOrder=sunHalo.renderOrder=moonMesh.renderOrder=-1; skyG.add(sunHalo,sunMesh,moonMesh);
+const starPos=[]; { let ss=7; const sr=()=>{ ss=(ss*16807)%2147483647; return ss/2147483647; };
+  for(let i=0;i<420;i++){ const u=sr()*Math.PI*2, v=Math.acos(1-sr()*1.05); starPos.push(Math.sin(v)*Math.cos(u)*170,Math.cos(v)*170,Math.sin(v)*Math.sin(u)*170); } }
+const starGeo=new THREE.BufferGeometry(); starGeo.setAttribute("position",new THREE.Float32BufferAttribute(starPos,3));
+const stars=new THREE.Points(starGeo,new THREE.PointsMaterial({color:"#ffffff",size:2,sizeAttenuation:false,transparent:true,opacity:0,fog:false,depthWrite:false}));
+stars.renderOrder=-1; skyG.add(stars);
 const cloudC=document.createElement("canvas"); cloudC.width=cloudC.height=32;
 { const cg=cloudC.getContext("2d"); for(let y=0;y<32;y++) for(let x=0;x<32;x++){ const v=vnoise(x/4.2+50,y/4.2+50)*.7+vnoise(x/2+9,y/2+9)*.3; if(v>.6){ cg.fillStyle="#ffffff"; cg.fillRect(x,y,1,1); } } }
 const cloudTex=new THREE.CanvasTexture(cloudC); cloudTex.magFilter=cloudTex.minFilter=THREE.NearestFilter; cloudTex.wrapS=cloudTex.wrapT=THREE.RepeatWrapping; cloudTex.repeat.set(5,5);
@@ -42,6 +47,7 @@ const atex=new THREE.CanvasTexture(atlas); atex.magFilter=THREE.NearestFilter; a
 const solidMat=new THREE.MeshBasicMaterial({map:atex,vertexColors:true,alphaTest:.5});
 const plantMat=new THREE.MeshBasicMaterial({map:atex,vertexColors:true,alphaTest:.5,side:THREE.DoubleSide});
 const waterMat=new THREE.MeshBasicMaterial({map:atex,vertexColors:true,transparent:true,opacity:.74,depthWrite:false});
+const worldMats=[solidMat,plantMat,waterMat].map(m=>({m,c:m.color.clone()})); // se oscurecen de noche
 const FACES=[
   {d:[-1,0,0],sh:.6,c:[[0,1,0,0,1],[0,0,0,0,0],[0,1,1,1,1],[0,0,1,1,0]]},
   {d:[1,0,0],sh:.6,c:[[1,1,1,0,1],[1,0,1,0,0],[1,1,0,1,1],[1,0,0,1,0]]},
@@ -173,7 +179,7 @@ armG.position.set(ARM_BASE.x,ARM_BASE.y,ARM_BASE.z);
   const sl=new THREE.Mesh(new THREE.BoxGeometry(.165,.165,.22),sleeve); sl.position.z=.22; armG.add(sl);
   const pick=new THREE.Mesh(new THREE.PlaneGeometry(.55,.55),new THREE.MeshBasicMaterial({map:pickTex,alphaTest:.5,side:THREE.DoubleSide}));
   pick.position.set(-.02,.2,-.3); pick.rotation.set(-.2,Math.PI-.55,-.15); armG.add(pick); }
-armG.traverse(o=>{ if(o.material){ o.material.depthTest=false; o.material.fog=false; o.renderOrder=10; } });
+armG.traverse(o=>{ if(o.material){ o.material.depthTest=false; o.material.fog=false; o.renderOrder=10; worldMats.push({m:o.material,c:o.material.color.clone()}); } });
 let useSwing=0, walkPh=0, moveAmt=0;
 
 /* objetos que saltan del bloque y vuelan hacia ti */
@@ -190,3 +196,29 @@ function updateDrops(dt){
     else { const tx=P.x,ty=P.y+.9,tz=P.z, k=Math.min(1,dt*9); p.x+=(tx-p.x)*k; p.y+=(ty-p.y)*k; p.z+=(tz-p.z)*k; }
     if(d.t>1.1||(d.t>.35&&Math.hypot(p.x-P.x,p.y-P.y-.9,p.z-P.z)<.35)){ scene.remove(d.sp); d.sp.material.dispose(); drops.splice(i,1); } }
 }
+
+/* ================= Día y noche ================= */
+// S.time va de 0 a 1: 0 amanece, .25 mediodía, .5 anochece, .75 medianoche. La noche pasa al doble de rápido.
+const DAY_LEN=480;
+let daylight=1, skyKey="";
+function updateSky(){
+  const a=S.time*Math.PI*2, e=Math.sin(a);
+  daylight=Math.max(0,Math.min(1,(e+.12)/.32));
+  const dusk=Math.max(0,1-Math.abs(e-.03)/.22), f=Math.min(1,S.flux/100)*.75;
+  sunDir.set(Math.cos(a)*.86,e,-.45).normalize();
+  sunMesh.position.copy(sunDir).multiplyScalar(165); sunHalo.position.copy(sunDir).multiplyScalar(166); moonMesh.position.copy(sunDir).multiplyScalar(-165);
+  for(const m of [sunMesh,sunHalo,moonMesh]) m.lookAt(skyG.position);
+  const key=Math.round(daylight*40)+","+Math.round(dusk*40)+","+Math.round(f*100);
+  if(key===skyKey) return; skyKey=key;
+  const top=NIGHT_TOP.clone().lerp(SKY_TOP,daylight).lerp(FLUX_TOP,f), hor=NIGHT_HOR.clone().lerp(SKY_HOR,daylight).lerp(DUSK,dusk*.55).lerp(FLUX_HOR,f);
+  paintSky(top,hor);
+  const L=.3+.7*daylight; worldMats.forEach(w=>w.m.color.copy(w.c).multiplyScalar(L));
+  ambL.intensity=.22+.4*daylight; sunL.intensity=.55*daylight; sunL.position.copy(sunDir);
+  clouds.material.opacity=.82*(.3+.7*daylight); clouds.material.color.setScalar(.35+.65*daylight);
+  stars.material.opacity=Math.max(0,1-daylight*1.6); sunHalo.material.opacity=.22+.25*dusk;
+}
+function dayPart(){
+  const a=S.time*Math.PI*2, e=Math.sin(a), up=Math.cos(a)>0;
+  return daylight<.05 ? "Noche" : daylight<1 ? (up?"Amanecer":"Atardecer") : e>.85 ? "Mediodía" : up ? "Mañana" : "Tarde";
+}
+
