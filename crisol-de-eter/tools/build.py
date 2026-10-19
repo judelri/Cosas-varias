@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Genera dist/crisol-de-eter.html: una sola página con el CSS y los JS incrustados.
+"""Genera dist/crisol-de-eter.html: una sola página con el CSS, las tipografías y los JS (three.js incluido) incrustados.
 
 Uso:  python3 tools/build.py
 Sirve para publicar el juego como un único archivo (por ejemplo, como artifact de Claude).
 Solo usa la biblioteca estándar de Python.
 """
+import base64
 import re
 from pathlib import Path
 
@@ -12,8 +13,14 @@ ROOT = Path(__file__).resolve().parent.parent
 html = (ROOT / "index.html").read_text(encoding="utf-8")
 
 
+def inline_font(m):
+    data = base64.b64encode((ROOT / "css" / m.group(1)).read_bytes()).decode("ascii")
+    return f'url("data:font/woff;base64,{data}")'
+
+
 def inline_css(m):
     css = (ROOT / m.group(1)).read_text(encoding="utf-8")
+    css = re.sub(r'url\("(\.\./fonts/[^"]+\.woff)"\)', inline_font, css)
     return f"<style>\n{css}</style>"
 
 
