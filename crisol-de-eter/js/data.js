@@ -28,6 +28,13 @@ const ITEMS = {
   obsidiana:{n:"Obsidiana",ab:"Ob",e:{roca:3,brasa:2,caos:1}}, ambar:{n:"Ámbar",ab:"Am",e:{luz:2,vida:1,orden:1}},
   ceniza:{n:"Ceniza de grieta",ab:"Cg",e:{caos:3,vacio:1}},
   corrupta:{n:"Masa corrupta",ab:"Mc",e:{caos:4,vacio:2},d:"Lo que deja el flux. Rica en Caos y Vacío."},
+  palo:{n:"Palo",ab:"Pa",e:{vida:1,orden:1},d:"Para mangos de herramientas y antorchas."},
+  lingote:{n:"Lingote de hierro",ab:"Li",e:{metal:4},crafted:1,d:"Mena de hierro fundida en el horno."},
+  pico_madera:{n:"Pico de madera",ab:"P1",e:{vida:2,orden:1},crafted:1,tool:1,d:"Saca roca y carbón."},
+  pico_piedra:{n:"Pico de piedra",ab:"P2",e:{roca:3,orden:1},crafted:1,tool:2,d:"Saca hierro, cuarzo y piedra chispa."},
+  pico_hierro:{n:"Pico de hierro",ab:"P3",e:{metal:3,orden:1},crafted:1,tool:3,d:"Saca obsidiana. Más rápido."},
+  pan:{n:"Pan",ab:"Pn",e:{vida:2,orden:1},crafted:1,food:5,d:"Tres semillas horneadas en la mesa."},
+  pollo_asado:{n:"Pollo asado",ab:"Pa",e:{vida:2,brasa:1},crafted:1,food:6,d:"Lo que más llena."},
   pollo:{n:"Pollo crudo",ab:"Po",e:{vida:2},food:2,d:"Lo sueltan las gallinas. Mejor asado en el horno."},
   manzana:{n:"Manzana",ab:"Mz",e:{vida:2,marea:1},food:4,d:"A veces cae de las hojas."},
   polvo:{n:"Polvo de luz",ab:"Pz",e:{luz:3,cefiro:1},d:"Lo sueltan las polillas de luz que salen de noche."},
@@ -42,6 +49,15 @@ const ITEMS = {
   amuleto:{n:"Amuleto de calma",ab:"Ac",e:{orden:3,vida:2},crafted:1,d:"Reduce a la mitad todo el flux que generas."},
   corazon:{n:"Corazón de Éter",ab:"Cé",e:{energia:4,vacio:4,luz:4,vida:4},crafted:1,d:"La obra maestra del taller."}
 };
+// Mesa de trabajo y horno. "#id" es un bloque (de S.bl, los que se ponen); lo demás, objetos de la mochila.
+const MESA = [
+  {out:"#24",n:4,in:{"#6":1}}, {out:"palo",n:4,in:{"#24":2}}, {out:"#25",n:4,in:{carbon:1,palo:1}},
+  {out:"pico_madera",in:{"#24":3,palo:2}}, {out:"pico_piedra",in:{piedra:3,palo:2}}, {out:"pico_hierro",in:{lingote:3,palo:2}},
+  {out:"pan",in:{semilla:3}}
+];
+const HORNO = [{in:"hierro",out:"lingote"},{in:"pollo",out:"pollo_asado"},{in:"#6",out:"carbon"}];
+const FUEL = [["#24",1.5],["palo",.5],["#6",1.5],["carbon",8]]; // fundiciones que da cada combustible, en el orden en que se gastan
+const TOOLS = ["","pico_madera","pico_piedra","pico_hierro","pico_arcano"];
 const CRU = [
   {id:"sal",cat:"cuarzo",cost:{orden:4,marea:4}}, {id:"tiza",cat:"piedra",cost:{orden:3,roca:3}},
   {id:"laton",cat:"hierro",cost:{orden:4,energia:2}}, {id:"vela",cat:"ambar",cost:{orden:3,luz:3}},

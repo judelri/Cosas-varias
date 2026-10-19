@@ -37,7 +37,7 @@ MAX_MSG = 512 * 1024
 DAY_LEN = 480  # igual que en js/render.js
 COLORS = ["#d9534f", "#5b9bd5", "#7fbf5a", "#e0a03c", "#9a62b0", "#59d0d6", "#e8e2cf", "#c4579f"]
 
-SH_N = {"flux", "mined", "rifts"}          # números: se suman diferencias
+SH_N = {"flux", "mined", "rifts", "fuel"}          # números: se suman diferencias
 SH_M = {"inv", "cru", "bl"}                # cantidades por clave: se suman y se borran al llegar a 0
 SH_S = {"world", "placed", "resp"}         # valor por clave: gana el último
 SH_U = {"scanned", "res"}                  # listas sin repetidos: se unen
@@ -46,7 +46,7 @@ SH_V = {"won", "rsch"}                     # valor entero: gana el último
 
 def fresh():
     return {"inv": {}, "cru": {}, "bl": {}, "flux": 5, "mined": 0, "rifts": 0, "world": {}, "placed": {}, "resp": {},
-            "scanned": [], "res": ["sal", "tiza"], "won": False, "rsch": None, "time": .06}
+            "scanned": [], "res": ["sal", "tiza"], "won": False, "rsch": None, "time": .06, "fuel": 0}
 
 
 def isnum(v):

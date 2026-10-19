@@ -11,7 +11,7 @@ function vnoise(x,z){ const xi=Math.floor(x),zi=Math.floor(z),xf=x-xi,zf=z-zi,s=
 let wseed=4242; const wr=()=>{ wseed=(wseed*16807)%2147483647; return wseed/2147483647; };
 const wri=n=>Math.floor(wr()*n);
 const LAB={x:24,z:24,y:7};
-const CRUC=[21,8,24], ALT=[27,8,24], PEDS=[[29,8,24],[25,8,24],[27,8,22],[27,8,26]], RIFT=[40,40], MESA=[21,8,20], HORNO=[27,8,20];
+const CRUC=[21,8,24], ALT=[27,8,24], PEDS=[[29,8,24],[25,8,24],[27,8,22],[27,8,26]], RIFT=[40,40], MESA_POS=[21,8,20], HORNO_POS=[27,8,20];
 const heights=[];
 function genWorld(){
   for(let x=0;x<W;x++) for(let z=0;z<D;z++){
@@ -65,7 +65,7 @@ function genWorld(){
   for(const [cx,cz] of [[-5,-5],[5,-5],[-5,5],[5,5]]) for(let y=LAB.y+1;y<=LAB.y+3;y++) world[ix(LAB.x+cx,y,LAB.z+cz)]=20;
   for(let x=LAB.x-1;x<=LAB.x+1;x++) for(let y=LAB.y+1;y<=LAB.y+2;y++) world[ix(x,y,LAB.z-5)]=16;
   world[ix(...CRUC)]=17; world[ix(...ALT)]=18; PEDS.forEach(p=>world[ix(...p)]=19);
-  world[ix(...MESA)]=32; world[ix(...HORNO)]=33;
+  world[ix(...MESA_POS)]=32; world[ix(...HORNO_POS)]=33;
   for(const [cx,cz] of [[-5,-5],[5,-5],[-5,5],[5,5]]) world[ix(LAB.x+cx,LAB.y+4,LAB.z+cz)]=TORCH; // antorchas sobre los pilares
   carveCaves();
 }

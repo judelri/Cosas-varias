@@ -34,18 +34,28 @@ function raycast(){
   }
   return null;
 }
+// rapidez de picado: el pico acelera mucho la roca y algo lo demás; sin el pico necesario es lentísimo
+function mineSpeed(b){
+  const t=toolTier(), stone=b.m==="roca"||b.m==="cristal";
+  let s=stone?[.3,1,1.5,2.2,3.2][t]:[1,1.15,1.3,1.45,1.8][t]; if(b.tier&&t<b.tier) s=Math.min(s,.3);
+  return s*(has("lente")?2:1);
+}
 function breakBlock(t){
   const b=B[t.id], k=`${t.x},${t.y},${t.z}`, placed=S.placed[k]; setBlock(t.x,t.y,t.z,0); burst(t.x,t.y,t.z,b.c); S.mined++; sfx("break",t.id); exhaust(.025);
   const got=[];
+  const weak=b.tier&&toolTier()<b.tier; // sin el pico necesario no suelta nada (como Minecraft)
+  if(weak) pick(`Necesitas un ${ITEMS[TOOLS[b.tier]].n.toLowerCase()} para sacar algo de aquí.`,"f");
+  // una antorcha encima se cae con el bloque
+  if(getB(t.x,t.y+1,t.z)===TORCH){ setBlock(t.x,t.y+1,t.z,0); delete S.placed[`${t.x},${t.y+1},${t.z}`]; S.bl[TORCH]=(S.bl[TORCH]||0)+1; }
   if(placed) delete S.placed[k]; // un bloque puesto solo devuelve el bloque: ni objetos, ni flux, ni reaparece
-  else {
+  else if(!weak){
     const night=daylight<.3&&b.flux; // de noche la Grieta suelta el doble y reacciona el doble
     (b.drop||[]).forEach(([it,p])=>{ if(Math.random()<p){ const n=night?2:1; give(it,n); got.push([it,n]); spawnDrop(it,t.x,t.y,t.z); } });
     if(b.resp) S.resp[k]={id:t.id,t:Date.now()+60000};
     if(b.flux) addFlux(b.flux*(night?2:1),night?"la grieta se agita de noche":"la grieta reacciona");
   }
   const parts=got.map(([i,n])=>icon(i,"ic sm")+" "+ITEMS[i].n+(n>1?" ×"+n:""));
-  if(b.bl){ S.bl[b.bl]=(S.bl[b.bl]||0)+1; if(!S.bl[S.sel]) S.sel=b.bl; parts.push(bicon(b.bl,"ic sm")+" "+B[b.bl].n); }
+  if(b.bl&&!weak){ S.bl[b.bl]=(S.bl[b.bl]||0)+1; if(!S.bl[S.sel]) S.sel=b.bl; parts.push(bicon(b.bl,"ic sm")+" "+B[b.bl].n); }
   if(parts.length){ pick("","","+ "+parts.join(", ")); sfx("pickup"); }
   hud(); save();
 }
@@ -53,6 +63,7 @@ function placeBlock(t){
   const id=S.sel; if(!id||!S.bl[id]) return false;
   const {px:x,py:y,pz:z}=t, cur=getB(x,y,z);
   if((x===t.x&&y===t.y&&z===t.z)||cur<0||(cur>0&&!B[cur].water&&!B[cur].plant)) return false;
+  if(id===TORCH&&!solidAt(x,y-1,z)){ if(useCd<=0){ useCd=.6; pick("La antorcha necesita un bloque debajo."); } return true; }
   if(useCd>0) return true;
   if(inBody(x,y,z)||netInBody(x,y,z)){ useCd=.6; pick("Ahí hay alguien: apártate para poner el bloque."); return true; }
   useCd=.25; swingStart();

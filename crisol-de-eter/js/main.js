@@ -43,12 +43,12 @@ function frame(now){
   if(targetMob){ const M=MOB[targetMob.type]; sel.visible=false; $("tgtName").textContent=M.n; $("tgtHint").textContent=M.hostile?"¡Hostil! Picar: golpear":"Picar: golpear · Escanear"; }
   else if(target){ sel.visible=true; sel.position.set(target.x+.5,target.y+.5,target.z+.5);
     const b=B[target.id]; $("tgtName").textContent=b.n;
-    $("tgtHint").textContent = b.use ? "Usar: abrir" : b.water ? "Usar: recoger agua" : b.unbreak ? "" : `Picar${b.drop?" · Escanear":""}`;
+    $("tgtHint").textContent = b.use ? "Usar: abrir" : b.water ? "Usar: recoger agua" : b.unbreak ? "" : b.tier&&toolTier()<b.tier ? `Necesitas un ${ITEMS[TOOLS[b.tier]].n.toLowerCase()}` : `Picar${b.drop?" · Escanear":""}`;
   } else { sel.visible=false; $("tgtName").textContent=""; $("tgtHint").textContent=""; }
   if(mining&&targetMob){ if(atkCd<=0){ atkCd=.45; attackMob(targetMob); exhaust(.1); } mine.k=null; mine.p=0; }
   else if(mining && target && !B[target.id].unbreak && !B[target.id].water && !B[target.id].custom){
     const k=`${target.x},${target.y},${target.z}`; if(mine.k!==k){ mine.k=k; mine.p=0; }
-    mine.p+=dt/B[target.id].hard*(has("lente")?2:1);
+    mine.p+=dt/B[target.id].hard*mineSpeed(B[target.id]);
     if(Math.random()<.3) burst(target.x,target.y,target.z,B[target.id].c,1);
     if(mine.p>=1){ breakBlock(target); mine.k=null; mine.p=0; }
   } else { mine.k=null; mine.p=0; }

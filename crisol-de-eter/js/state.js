@@ -6,11 +6,13 @@ const KEY = "crisol-eter-3d-v1";
 // bl: bloques para poner · sel: bloque elegido · placed: bloques puestos por el jugador · time: hora (0 amanecer, .5 anochecer)
 // res: recetas investigadas · rsch: investigación en curso
 const fresh = () => ({inv:{},scanned:[],cru:{},flux:5,world:{},resp:{},mined:0,rifts:0,won:false,player:null,
-  bl:{},sel:0,placed:{},time:.06,mute:false,res:["sal","tiza"],rsch:null,hp:20,food:20,ex:0,deaths:0});
+  bl:{},sel:0,placed:{},time:.06,mute:false,res:["sal","tiza"],rsch:null,hp:20,food:20,ex:0,deaths:0,fuel:0});
 let S = fresh();
 try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(fresh(), JSON.parse(raw)); } catch(e) {}
 for (const k of Object.keys(S.inv)) if (!(S.inv[k]>0)) delete S.inv[k];
 if (Array.isArray(S.resp)) S.resp = Object.fromEntries(S.resp.map(r=>[r.k,{id:r.id,t:r.t}])); // antes era una lista
+// partidas de antes de las herramientas: reciben un pico de piedra para no perder lo avanzado
+if((S.mined>0||S.player)&&!["pico_madera","pico_piedra","pico_hierro","pico_arcano"].some(t=>S.inv[t])) S.inv.pico_piedra=1;
 // partidas de antes de la investigación: lo que ya forjaste queda investigado
 S.scanned.forEach(i=>{ if((CRU.some(r=>r.id===i)||INF.some(r=>r.id===i)) && !S.res.includes(i)) S.res.push(i); });
 if (window.claude?.hot?.data?.S) S = window.claude.hot.data.S;
@@ -32,6 +34,20 @@ function sig(id,size=15){ const s=ESS[id]; return `<svg class="sig" viewBox="0 0
 function known(){ const k=new Set(); S.scanned.forEach(i=>Object.keys(ITEMS[i].e).forEach(e=>k.add(e))); return k; }
 function chip(id,n,have){ const K=known(); if(!K.has(id)) return `<span class="chip unk">??? <b>${n}</b></span>`; const short=have!==undefined&&have<n; return `<span class="chip${short?" short":""}">${sig(id)}<b>${have!==undefined?`${have}/${n}`:n}</b> ${ESS[id].n}</span>`; }
 const itemColor = id => ESS[Object.keys(ITEMS[id].e)[0]].c;
+// pico de 16×16 (icono y textura de la mano): cabeza en arco con su color claro/oscuro y mango de madera
+function pickCanvas(hl,hd){
+  const c=document.createElement("canvas"); c.width=c.height=16; const g2=c.getContext("2d"), m=[];
+  const segD=(x,y,ax,ay,bx,by)=>{ const vx=bx-ax,vy=by-ay,t=Math.max(0,Math.min(1,((x-ax)*vx+(y-ay)*vy)/(vx*vx+vy*vy))); return Math.hypot(x-(ax+vx*t),y-(ay+vy*t)); };
+  for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const cx=x+.5,cy=y+.5, r=Math.hypot(cx-6,cy-10);
+    if(r>7.9&&r<10.1&&cx>4&&cy<12) m[y*16+x]="h"; else if(segD(cx,cy,1.5,14.5,10.5,5.5)<.85) m[y*16+x]="w"; }
+  const on=(x,y)=>x>=0&&y>=0&&x<16&&y<16&&m[y*16+x];
+  for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const k=on(x,y);
+    if(k==="h"){ g2.fillStyle=Math.hypot(x+.5-6,y+.5-10)<9?hl:hd; g2.fillRect(x,y,1,1); }
+    else if(k==="w"){ g2.fillStyle=(x+y)%3?"#7a5634":"#5e4127"; g2.fillRect(x,y,1,1); }
+    else if(on(x-1,y)||on(x+1,y)||on(x,y-1)||on(x,y+1)){ g2.fillStyle="#1a1418"; g2.fillRect(x,y,1,1); } }
+  return c;
+}
+const PICK_COL=[null,["#b08f5a","#7a5634"],["#a2a2aa","#6b6b72"],["#eeeef4","#a8a8b6"],["#c08ad6","#6a3a80"]];
 /* iconos pixelados de los materiales (16×16) */
 const ICONC={}, ICON={};
 (function(){
@@ -75,6 +91,9 @@ const ICONC={}, ICON={};
   C.pluma=mk((x,y)=>{ const t=((x-3)+(13-y))/20; const d=Math.abs((x-3)-(13-y))/1.414; return t>0&&t<1&&d<2.8*Math.sin(Math.PI*t)+.4; },
     (x,y)=>{ const d=Math.abs((x-3)-(13-y))/1.414; return d<.7?"#7a8a80":sh("#dce8e0",(Math.floor(x+y)%3?1:.86)); });
   C.tiza=mk((x,y)=>{ const t=Math.max(0,Math.min(1,((x-4)*8+(12-y)*8)/128)); return Math.hypot(x-(4+8*t),y-(12-8*t))<1.7; },(x,y)=>sh("#f2efe6",x<7?.88:1.05));
+  TOOLS.forEach((t,i)=>{ if(t) C[t]=pickCanvas(...PICK_COL[i]); });
+  C.palo=mk((x,y)=>Math.abs((x-y)-0)<1.2&&x>2.5&&x<13.5,(x,y)=>(Math.floor(x)%3)?"#8a6440":"#6b4a2b");
+  C.lingote=mk((x,y)=>y>=5.5&&y<11.5&&x>=2+(11.5-y)*.5&&x<14-(11.5-y)*.5,(x,y)=>sh("#d8d8e2",y<7.5?1.15:y>10.5?.75:.95));
   C.laton=mk((x,y)=>y>=4.5&&y<12.5&&x>=1.5+(12.5-y)*.55&&x<14.5-(12.5-y)*.55,(x,y)=>sh("#d4a94c",y<6.5?1.3:y>11?.8:1));
   C.vela=mk((x,y)=>(x>=6&&x<10&&y>=7&&y<15)||(x>=7.5&&x<8.5&&y>=5&&y<7)||(((x-8)/1.6)**2+((y-3.4)/2.2)**2<1),
     (x,y)=> y<5.5 ? (Math.abs(x-8)<.8&&y>2.5?"#fff2a0":"#f0a03c") : y<7 ? "#2a2020" : sh("#f2d36b",x<7.5?1.15:.95));
@@ -91,6 +110,29 @@ const icon = (id,cls="ic") => `<img class="${cls}" src="${ICON[id]}" alt="${ITEM
 function pick(m,k="",html){ const d=document.createElement("div"); d.className="pk "+k; if(html) d.innerHTML=html; else d.textContent=m; const p=$("picks"); p.appendChild(d); while(p.children.length>4) p.firstChild.remove(); setTimeout(()=>d.remove(),2700); }
 
 /* ================= Mecánicas ================= */
+// herramientas y fabricación
+const toolTier=()=>{ for(let t=TOOLS.length-1;t>0;t--) if(has(TOOLS[t])) return t; return 0; };
+const isBK=k=>k[0]==="#";
+const haveK=k=>isBK(k)?(S.bl[+k.slice(1)]||0):has(k);
+function takeK(k,n){ if(!isBK(k)) return take(k,n); const id=+k.slice(1); S.bl[id]=(S.bl[id]||0)-n; if(!(S.bl[id]>0)) delete S.bl[id]; }
+function giveK(k,n){ if(!isBK(k)) return give(k,n); const id=+k.slice(1); S.bl[id]=(S.bl[id]||0)+n; if(!S.bl[S.sel]) S.sel=id; }
+const nameK=k=>isBK(k)?B[+k.slice(1)].n:ITEMS[k].n;
+const iconK=(k,cls="ic")=>isBK(k)?bicon(+k.slice(1),cls):icon(k,cls);
+const canCraft=r=>Object.entries(r.in).every(([k,n])=>haveK(k)>=n);
+function craft(r,times=1){
+  let made=0; while(made<times&&canCraft(r)){ for(const [k,n] of Object.entries(r.in)) takeK(k,n); giveK(r.out,r.n||1); made++; }
+  if(made){ pick(`Fabricaste: ${nameK(r.out)} ×${made*(r.n||1)}`,"g"); sfx(ITEMS[r.out]&&ITEMS[r.out].tool?"forge":"place",24); }
+  return made;
+}
+// el horno gasta una fundición de combustible por objeto; si no queda, quema lo primero que haya de FUEL (nunca lo que se está fundiendo)
+function refuel(skip){ for(const [k,v] of FUEL){ if(k!==skip&&haveK(k)>0){ takeK(k,1); S.fuel+=v; return true; } } return false; }
+function smelt(r,times=1){
+  let made=0;
+  while(made<times&&haveK(r.in)>0){ if(S.fuel<1&&!refuel(r.in)) break; S.fuel-=1; takeK(r.in,1); giveK(r.out,1); made++; }
+  if(made){ pick(`El horno dio: ${nameK(r.out)} ×${made}`,"g"); sfx("dissolve"); burst(HORNO_POS[0],HORNO_POS[1],HORNO_POS[2],"#f2b13c",12); }
+  else if(haveK(r.in)>0) pick("No hay combustible: tablones, palos, troncos o carbón.","f");
+  return made;
+}
 function addFlux(n, why){
   if (n<=0) return;
   if (has("amuleto")) n = Math.ceil(n/2);

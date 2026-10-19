@@ -27,7 +27,7 @@ function hud(){
   $("mute").setAttribute("aria-label",S.mute?"Activar el sonido":"Silenciar");
   setHTML($("vitals"),vitalsHTML()); $("vitals").classList.toggle("low",S.hp<=6);
   $("vitals").setAttribute("aria-label",`Vida ${S.hp/2} de 10 · Comida ${S.food/2} de 10`);
-  teamHud(); updateCauldron();
+  setHeldTool(toolTier()); teamHud(); updateCauldron();
 }
 function selectBlock(id){ if(!S.bl[id]||id===S.sel) return; S.sel=id; sfx("click"); hud(); save(); }
 function cycleBlock(d){ const bls=Object.keys(S.bl).map(Number); if(bls.length<2) return; selectBlock(bls[(bls.indexOf(S.sel)+d+bls.length)%bls.length]); }
@@ -108,7 +108,8 @@ function renderPanel(){
     h=`<h2>Grimorio</h2>
     <h3>Controles</h3>${isTouch?`<div class="keys"><kbd>Joystick</kbd><span>Moverte (salta solo al chocar con un bloque)</span><kbd>Arrastrar</kbd><span>Mirar alrededor</span><kbd>Picar</kbd><span>Mantén para romper el bloque al que apuntas</span><kbd>Usar</kbd><span>Abrir crisol, altar o estantería; recoger agua; poner el bloque elegido</span><kbd>Escanear</kbd><span>Aprender las esencias del bloque</span><kbd>Barra</kbd><span>Toca un bloque para elegirlo</span><kbd>Corazones</kbd><span>Tócalos para comer</span></div>`
       :`<div class="keys"><kbd>Clic</kbd><span>Capturar el ratón</span><kbd>WASD</kbd><span>Moverte</span><kbd>Espacio</kbd><span>Saltar o nadar</span><kbd>Clic izq.</kbd><span>Mantén para picar</span><kbd>Clic der. / E</kbd><span>Usar: crisol, altar, estantería, agua, o poner el bloque elegido</span><kbd>1–9 / rueda</kbd><span>Elegir bloque</span><kbd>F</kbd><span>Escanear el bloque apuntado</span><kbd>I</kbd><span>Mochila</span><kbd>G</kbd><span>Grimorio</span><kbd>C</kbd><span>Comer</span><kbd>M</kbd><span>Sonido sí / no</span><kbd>Esc / E</kbd><span>Cerrar el panel</span></div>`}
-    <h3>El mundo</h3><ul class="rules"><li>Taller (centro): crisol a la izquierda, altar con 4 pedestales a la derecha, estantería de investigación al fondo.</li><li>Río (oeste): agua y arena.</li><li>Bosque (sur): troncos con ámbar, hojas con plumas y semillas.</li><li>Montaña (noreste): hierro, carbón, cuarzo y piedra chispa.</li><li>Grieta (sureste): ceniza, obsidiana y suelo corrupto. Picar ahí sube el flux.</li><li>Los recursos vuelven a aparecer al minuto.</li><li>Al picar tierra, roca, arena, troncos u hojas te llevas el bloque para ponerlo donde quieras. Lo que pones no suelta objetos ni reaparece.</li><li>Tienes 10 corazones y 10 de comida. La comida baja con el tiempo (y al saltar, picar y pelear); con la comida casi llena te curas, y con hambre pierdes vida. Caer de más de 3 bloques duele. Si caes, reapareces en el taller con todo.</li><li>Un día dura unos 6 minutos; la noche, más oscura, pasa más rápido. De noche la Grieta se agita: sus bloques sueltan el doble y dan el doble de flux.</li></ul>
+    <h3>El mundo</h3><ul class="rules"><li>Taller (centro): crisol a la izquierda, altar con 4 pedestales a la derecha, estantería de investigación al fondo, con la mesa de trabajo y el horno a sus lados.</li>
+    <li>Herramientas: empiezas a mano. Pica troncos, haz tablones y palos en la mesa, y tu primer pico. La roca y el carbón piden pico de madera; el hierro, el cuarzo y la piedra chispa, de piedra; la obsidiana, de hierro. Funde el hierro en el horno.</li><li>Río (oeste): agua y arena.</li><li>Bosque (sur): troncos con ámbar, hojas con plumas y semillas.</li><li>Montaña (noreste): hierro, carbón, cuarzo y piedra chispa.</li><li>Grieta (sureste): ceniza, obsidiana y suelo corrupto. Picar ahí sube el flux.</li><li>Los recursos vuelven a aparecer al minuto.</li><li>Al picar tierra, roca, arena, troncos u hojas te llevas el bloque para ponerlo donde quieras. Lo que pones no suelta objetos ni reaparece.</li><li>Tienes 10 corazones y 10 de comida. La comida baja con el tiempo (y al saltar, picar y pelear); con la comida casi llena te curas, y con hambre pierdes vida. Caer de más de 3 bloques duele. Si caes, reapareces en el taller con todo.</li><li>Un día dura unos 6 minutos; la noche, más oscura, pasa más rápido. De noche la Grieta se agita: sus bloques sueltan el doble y dan el doble de flux.</li></ul>
     <h3>Esencias <span class="mono" style="font-size:.85rem;color:var(--muted)">${K.size}/${ESS_ORDER.length}</span></h3>
     <div class="egrid">${ESS_ORDER.map(e=>{ const E=ESS[e],k=K.has(e); const sub=!k?"Sin descubrir":E.from?(E.from.every(x=>K.has(x))?`${ESS[E.from[0]].n} + ${ESS[E.from[1]].n}`:"Compuesta"):"Primal · "+E.d; return `<div class="ess${k?"":" unk"}">${k?sig(e,24):`<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="#3b3346" stroke-dasharray="2 3"/></svg>`}<div><strong>${k?E.n:"???"}</strong><small>${sub}</small></div></div>`; }).join("")}</div>
     <h3>Criaturas</h3><ul class="rules"><li>Gallinas en los prados: sueltan plumas, pollo crudo y a veces semillas. Huyen si las golpeas.</li><li>Polillas de luz, solo de noche: sueltan Polvo de luz (Luz y Céfiro).</li><li>Sombras de bruma: nacen en la oscuridad (cuevas, la noche lejos de antorchas, o con el flux en 50 o más). Te persiguen y golpean (1,5 corazones). Cuatro golpes las deshacen. No entran al taller y el sol las disuelve.</li><li>Se golpean apuntando y picando; escanear una criatura muestra lo que suelta.</li></ul>
@@ -118,11 +119,27 @@ function renderPanel(){
     <h3>Partida</h3><p class="note">${S.mined} bloques picados · ${S.rifts} grietas · ${S.scanned.length} objetos escaneados · ${S.res.length}/${CRU.length+INF.length} recetas investigadas</p>
     ${teamMode?`<p class="note" style="margin-top:6px">Es una partida en equipo: vive en el servidor. Para empezar de cero, ciérralo y ábrelo con <span class="mono">python3 tools/servidor.py --nueva</span>.</p>`:`<div style="margin-top:8px">${resetAsk?`<button class="btn" data-act="reset2" style="border-color:var(--bad)">Sí, borrar la partida</button> <button class="btn" data-act="reset0">Cancelar</button>`:`<button class="btn" data-act="reset1">Empezar de nuevo</button>`}</div>`}`;
   }
+  else if(panel==="mesa"){
+    h=`<h2>Mesa de trabajo</h2><p class="hint">Junta lo que pide cada receta y fabrica. Los bloques (troncos, tablones, antorchas) son los de tu barra.</p>
+    <div class="rows">${MESA.map((r,i)=>{ const ok=canCraft(r);
+      return `<div class="row${ok?"":" dim"}">${iconK(r.out)}<div style="min-width:0"><div class="nm">${nameK(r.out)}${(r.n||1)>1?` <span class="mono" style="color:var(--muted)">×${r.n}</span>`:""}</div>
+        <div class="chips">${Object.entries(r.in).map(([k,n])=>`<span class="chip${haveK(k)<n?" short":""}">${iconK(k,"ic sm")}<b>${haveK(k)}/${n}</b> ${nameK(k)}</span>`).join("")}</div>
+        ${ITEMS[r.out]&&ITEMS[r.out].d?`<p class="note">${ITEMS[r.out].d}</p>`:""}
+        <div class="acts"><button class="btn pri" data-act="craft" data-id="${i}" ${ok?"":"disabled"}>Fabricar</button><button class="btn" data-act="craftall" data-id="${i}" ${ok?"":"disabled"}>Todo lo posible</button></div></div></div>`; }).join("")}</div>`;
+  }
+  else if(panel==="horno"){
+    h=`<h2>Horno</h2><p class="hint">Cada cosa que fundes gasta una carga de combustible. Si se acaba, el horno quema solo lo que tengas: tablones (1,5), palos (0,5), troncos (1,5) o carbón (8).</p>
+    <p class="note" style="margin-bottom:10px">Combustible cargado: <b class="mono">${Math.floor(S.fuel*10)/10}</b></p>
+    <div class="rows">${HORNO.map((r,i)=>{ const n=haveK(r.in);
+      return `<div class="row${n?"":" dim"}">${iconK(r.out)}<div style="min-width:0"><div class="nm">${nameK(r.out)}</div>
+        <div class="chips"><span class="chip${n?"":" short"}">${iconK(r.in,"ic sm")}<b>${n}</b> ${nameK(r.in)}</span></div>
+        <div class="acts"><button class="btn pri" data-act="smelt" data-id="${i}" ${n?"":"disabled"}>Fundir 1</button><button class="btn" data-act="smeltall" data-id="${i}" ${n?"":"disabled"}>Fundir todo</button></div></div></div>`; }).join("")}</div>`;
+  }
   else if(panel==="muerte"){ h=`<h2>Has caído</h2><p class="hint" style="font-size:1rem">Por ${esc(deathWhy||"algo")}. Conservas todo lo que llevabas.</p><button class="btn pri" data-act="respawn">Reaparecer en el taller</button>`; }
   else if(panel==="win"){ h=`<h2>Corazón de Éter</h2><p class="hint" style="font-size:1rem">Lo forjaste tras picar ${S.mined} bloques${S.rifts?` y sobrevivir a ${S.rifts} grieta(s)`:" sin abrir ninguna grieta"}. El taller sigue abierto.</p><button class="btn pri" data-act="closep">Seguir explorando</button>`; }
   else if(panel==="help"){ h=`<h2>Crisol de Éter</h2><p class="hint" style="font-size:.95rem">Pica bloques para reunir materiales, escanéalos para descubrir sus esencias, disuélvelos en el crisol y forja objetos en el altar. Vigila el flux. La meta es el Corazón de Éter.</p>
     ${isTouch?`<div class="keys"><kbd>Joystick</kbd><span>Moverte</span><kbd>Arrastrar</kbd><span>Mirar</span><kbd>Picar</kbd><span>Mantener para romper</span><kbd>Usar</kbd><span>Crisol, altar, estantería, agua o poner un bloque</span></div>`:`<div class="keys"><kbd>WASD</kbd><span>Moverte · Espacio salta</span><kbd>Clic izq.</kbd><span>Mantén para picar</span><kbd>Clic der. / E</kbd><span>Usar o poner un bloque</span><kbd>1–9</kbd><span>Elegir bloque</span><kbd>F</kbd><span>Escanear</span><kbd>I · G</kbd><span>Mochila · Grimorio</span></div>`}
-    <p class="note" style="margin-bottom:8px">Cuida tus corazones y tu comida. De noche y en las cuevas salen sombras de bruma: el taller y la luz de las antorchas te protegen.</p><p class="note" style="margin-bottom:12px">Empiezas en el taller: el crisol está a tu izquierda, el altar a tu derecha y la estantería, donde se investigan las recetas, al fondo.</p><button class="btn pri" data-act="play">Jugar</button>`; }
+    <p class="note" style="margin-bottom:8px">Empiezas sin herramientas: pica un tronco a mano y ve a la mesa de trabajo del taller. Cuida tus corazones y tu comida. De noche y en las cuevas salen sombras de bruma: el taller y la luz de las antorchas te protegen.</p><p class="note" style="margin-bottom:12px">Empiezas en el taller: el crisol está a tu izquierda, el altar a tu derecha y la estantería, donde se investigan las recetas, al fondo.</p><button class="btn pri" data-act="play">Jugar</button>`; }
   setHTML(pb,h);
   if(panel==="equipo") teamList();
 }
@@ -130,6 +147,7 @@ $("panel").addEventListener("click",ev=>{
   const b=ev.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act,id=b.dataset.id;
   if(a==="closep"||a==="respawn") return closePanel();
   if(a==="eat"){ eat(id); if(panel) renderPanel(); return; }
+  if(a==="craft"||a==="craftall") craft(MESA[+id],a==="craft"?1:99); else if(a==="smelt"||a==="smeltall") smelt(HORNO[+id],a==="smelt"?1:99);
   if(a==="play"){ closePanel(); if(!isTouch) canvas.requestPointerLock?.(); return; }
   if(a==="scan") scanItems([id]); else if(a==="dis") dissolve(id); else if(a==="cat") catalyze(id);
   else if(a==="sal") useSal(); else if(a==="empty") emptyCru(); else if(a==="inf") return infuse(id);

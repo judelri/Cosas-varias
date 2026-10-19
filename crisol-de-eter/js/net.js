@@ -7,7 +7,7 @@
 // más lo ya enviado) y se mandan ops. Mismas reglas que apply_op en tools/servidor.py:
 //   n: número que suma · m: cantidad por clave (se borra al llegar a 0) · s: valor por clave (gana el último)
 //   u: lista sin repetidos · v: valor entero (gana el último)
-const SH={n:["flux","mined","rifts"],m:["inv","cru","bl"],s:["world","placed","resp"],u:["scanned","res"],v:["won","rsch"]};
+const SH={n:["flux","mined","rifts","fuel"],m:["inv","cru","bl"],s:["world","placed","resp"],u:["scanned","res"],v:["won","rsch"]};
 const SHARED=Object.values(SH).flat();
 const NET={ws:null,id:0,color:"",leader:false,base:null,seq:0,pending:[],players:{},dirs:[],up:false,ever:false,sendT:0,tErr:0,panelT:0,panelDirty:false};
 const clone=o=>JSON.parse(JSON.stringify(o));

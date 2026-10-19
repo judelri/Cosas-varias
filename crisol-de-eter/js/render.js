@@ -174,17 +174,9 @@ const crackMesh=new THREE.Mesh(new THREE.BoxGeometry(1.006,1.006,1.006),new THRE
 crackMesh.visible=false; scene.add(crackMesh);
 
 /* brazo y pico en primera persona */
-const pickC=document.createElement("canvas"); pickC.width=pickC.height=16;
-{ const pg2=pickC.getContext("2d"), m=[];
-  const segD=(x,y,ax,ay,bx,by)=>{ const vx=bx-ax,vy=by-ay,t=Math.max(0,Math.min(1,((x-ax)*vx+(y-ay)*vy)/(vx*vx+vy*vy))); return Math.hypot(x-(ax+vx*t),y-(ay+vy*t)); };
-  for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const cx=x+.5,cy=y+.5, r=Math.hypot(cx-6,cy-10);
-    if(r>7.9&&r<10.1&&cx>4&&cy<12) m[y*16+x]="h"; else if(segD(cx,cy,1.5,14.5,10.5,5.5)<.85) m[y*16+x]="w"; }
-  const on=(x,y)=>x>=0&&y>=0&&x<16&&y<16&&m[y*16+x];
-  for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const k=on(x,y);
-    if(k==="h"){ pg2.fillStyle=Math.hypot(x+.5-6,y+.5-10)<9?"#c9c9d2":"#8d8d98"; pg2.fillRect(x,y,1,1); }
-    else if(k==="w"){ pg2.fillStyle=(x+y)%3?"#7a5634":"#5e4127"; pg2.fillRect(x,y,1,1); }
-    else if(on(x-1,y)||on(x+1,y)||on(x,y-1)||on(x,y+1)){ pg2.fillStyle="#1a1418"; pg2.fillRect(x,y,1,1); } } }
-const pickTex=new THREE.CanvasTexture(pickC); pickTex.magFilter=pickTex.minFilter=THREE.NearestFilter;
+// una textura de pico por nivel (madera, piedra, hierro, metal arcano); sin pico se ve el puño
+const pickTexs=PICK_COL.map(c=>{ if(!c) return null; const t=new THREE.CanvasTexture(pickCanvas(...c)); t.magFilter=t.minFilter=THREE.NearestFilter; return t; });
+let armPick=null;
 // armG es el hombro: el golpe gira desde ahí (si girara desde el medio, la manga subiría y taparía la vista); armI adelanta brazo y pico
 const SH_D=.33, armG=new THREE.Group(), armI=new THREE.Group(); armI.position.z=-SH_D; armG.add(armI); camera.add(armG);
 const ARM_BASE={x:.42,y:-.4,z:-.58,rx:.15,ry:-.25};
@@ -192,8 +184,9 @@ armG.position.set(ARM_BASE.x,ARM_BASE.y,ARM_BASE.z);
 { const skin=new THREE.MeshBasicMaterial({color:"#c38c62"}), sleeve=new THREE.MeshBasicMaterial({color:"#3b5e8c"});
   const a=new THREE.Mesh(new THREE.BoxGeometry(.15,.15,.5),skin); a.position.z=-.05; armI.add(a);
   const sl=new THREE.Mesh(new THREE.BoxGeometry(.165,.165,.22),sleeve); sl.position.z=.22; armI.add(sl);
-  const pick=new THREE.Mesh(new THREE.PlaneGeometry(.55,.55),new THREE.MeshBasicMaterial({map:pickTex,alphaTest:.5,side:THREE.DoubleSide}));
+  const pick=armPick=new THREE.Mesh(new THREE.PlaneGeometry(.55,.55),new THREE.MeshBasicMaterial({map:pickTexs[2],alphaTest:.5,side:THREE.DoubleSide}));
   pick.position.set(-.02,.2,-.3); pick.rotation.set(-.2,Math.PI-.55,-.15); armI.add(pick); }
+function setHeldTool(t){ armPick.visible=t>0; if(t>0&&armPick.material.map!==pickTexs[t]){ armPick.material.map=pickTexs[t]; armPick.material.needsUpdate=true; } }
 // transparente (aunque sea opaco) para dibujarse después del agua y las sombras: el brazo siempre queda delante
 armG.traverse(o=>{ if(o.material){ o.material.depthTest=false; o.material.fog=false; o.material.transparent=true; o.renderOrder=10; worldMats.push({m:o.material,c:o.material.color.clone()}); } });
 // swing: avance del golpe (0 = quieto, 0..1 = golpeando); bobA: cuánto se balancea el brazo al caminar
