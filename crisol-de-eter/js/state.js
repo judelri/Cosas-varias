@@ -20,6 +20,8 @@ let teamMode=false;
 const save = () => { try { localStorage.setItem(teamMode?KEY+"-equipo":KEY, JSON.stringify(teamMode?{player:S.player,sel:S.sel,mute:S.mute}:S)); } catch(e) {} };
 
 const $ = id => document.getElementById(id);
+// cambia el HTML solo si es distinto: así no se reinician imágenes ni animaciones al refrescar
+const setHTML = (el,h) => { if(el._h!==h){ el._h=h; el.innerHTML=h; } };
 const sum = o => Object.values(o).reduce((a,b)=>a+b,0);
 const rnd = n => Math.floor(Math.random()*n);
 const has = id => (S.inv[id]||0);

@@ -177,16 +177,21 @@ const pickC=document.createElement("canvas"); pickC.width=pickC.height=16;
     else if(k==="w"){ pg2.fillStyle=(x+y)%3?"#7a5634":"#5e4127"; pg2.fillRect(x,y,1,1); }
     else if(on(x-1,y)||on(x+1,y)||on(x,y-1)||on(x,y+1)){ pg2.fillStyle="#1a1418"; pg2.fillRect(x,y,1,1); } } }
 const pickTex=new THREE.CanvasTexture(pickC); pickTex.magFilter=pickTex.minFilter=THREE.NearestFilter;
-const armG=new THREE.Group(); camera.add(armG);
+// armG es el hombro: el golpe gira desde ahí (si girara desde el medio, la manga subiría y taparía la vista); armI adelanta brazo y pico
+const SH_D=.33, armG=new THREE.Group(), armI=new THREE.Group(); armI.position.z=-SH_D; armG.add(armI); camera.add(armG);
 const ARM_BASE={x:.42,y:-.4,z:-.58,rx:.15,ry:-.25};
 armG.position.set(ARM_BASE.x,ARM_BASE.y,ARM_BASE.z);
 { const skin=new THREE.MeshBasicMaterial({color:"#c38c62"}), sleeve=new THREE.MeshBasicMaterial({color:"#3b5e8c"});
-  const a=new THREE.Mesh(new THREE.BoxGeometry(.15,.15,.5),skin); a.position.z=-.05; armG.add(a);
-  const sl=new THREE.Mesh(new THREE.BoxGeometry(.165,.165,.22),sleeve); sl.position.z=.22; armG.add(sl);
+  const a=new THREE.Mesh(new THREE.BoxGeometry(.15,.15,.5),skin); a.position.z=-.05; armI.add(a);
+  const sl=new THREE.Mesh(new THREE.BoxGeometry(.165,.165,.22),sleeve); sl.position.z=.22; armI.add(sl);
   const pick=new THREE.Mesh(new THREE.PlaneGeometry(.55,.55),new THREE.MeshBasicMaterial({map:pickTex,alphaTest:.5,side:THREE.DoubleSide}));
-  pick.position.set(-.02,.2,-.3); pick.rotation.set(-.2,Math.PI-.55,-.15); armG.add(pick); }
+  pick.position.set(-.02,.2,-.3); pick.rotation.set(-.2,Math.PI-.55,-.15); armI.add(pick); }
 armG.traverse(o=>{ if(o.material){ o.material.depthTest=false; o.material.fog=false; o.renderOrder=10; worldMats.push({m:o.material,c:o.material.color.clone()}); } });
-let useSwing=0, walkPh=0, moveAmt=0;
+// swing: avance del golpe (0 = quieto, 0..1 = golpeando); bobA: cuánto se balancea el brazo al caminar
+let swing=0, walkPh=0, moveAmt=0, bobA=0;
+const swingStart=()=>{ if(swing===0||swing>.6) swing=1e-4; };
+// golpe: baja en el primer 30 % de la vuelta (rápido, pero en varios fotogramas) y vuelve suave
+const strike=p=>p<.3?Math.sin(p/.3*Math.PI/2):.5+.5*Math.cos((p-.3)/.7*Math.PI);
 
 /* objetos que saltan del bloque y vuelan hacia ti */
 const drops=[], dropTex={};

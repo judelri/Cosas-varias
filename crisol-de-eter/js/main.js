@@ -2,7 +2,9 @@
 // Script clásico (sin módulos): comparte el ámbito global con los demás archivos de js/.
 
 /* ================= Bucle ================= */
-function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); ARM_BASE.x=Math.min(.42,.58*Math.tan(35*Math.PI/180)*camera.aspect*.62); ARM_BASE.y=camera.aspect<1?-.27:-.4; armG.scale.setScalar(camera.aspect<1?.55:1); }
+function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); ARM_BASE.x=Math.min(.42,.58*Math.tan(35*Math.PI/180)*camera.aspect*.62); ARM_BASE.y=camera.aspect<1?-.27:-.4; armG.scale.setScalar(camera.aspect<1?.55:1);
+  // hombro desplazado para que, en reposo, el brazo quede donde siempre
+  ARM_BASE.sh=new THREE.Vector3(0,0,-SH_D).applyEuler(new THREE.Euler(ARM_BASE.rx,ARM_BASE.ry,0)).multiplyScalar(armG.scale.x); }
 addEventListener("resize",resize); resize();
 let last=performance.now(), tick1=0, tick30=0, savet=0, lastStep=0;
 function persist(){ if(resetting) return; S.player={x:P.x,y:P.y,z:P.z,yaw:P.yaw,pitch:P.pitch}; save(); }
@@ -43,11 +45,10 @@ function frame(now){
     const k=`${target.x},${target.y},${target.z}`; if(mine.k!==k){ mine.k=k; mine.p=0; }
     mine.p+=dt/B[target.id].hard*(has("lente")?2:1);
     if(Math.random()<.3) burst(target.x,target.y,target.z,B[target.id].c,1);
-    mine.snd=(mine.snd||0)-dt; if(mine.snd<=0){ sfx("hit",target.id); mine.snd=.24; }
     if(mine.p>=1){ breakBlock(target); mine.k=null; mine.p=0; }
   } else { mine.k=null; mine.p=0; }
   $("mineWrap").hidden=!mine.k; $("mineBar").style.width=(mine.p*100)+"%";
-  if(mine.k&&target){ crackMesh.visible=true; crackMesh.position.set(target.x+.5,target.y+.5,target.z+.5); crackTex.offset.x=Math.min(9,Math.floor(mine.p*10))/10; } else crackMesh.visible=false;
+  if(mine.k&&target&&!B[target.id].plant){ crackMesh.visible=true; crackMesh.position.set(target.x+.5,target.y+.5,target.z+.5); crackTex.offset.x=Math.min(9,Math.floor(mine.p*10))/10; } else crackMesh.visible=false;
   useCd=Math.max(0,useCd-dt);
   // mantener Usar pone bloques seguidos (o sigue recogiendo agua)
   if(using&&!panel&&useCd<=0&&target&&(target.id===5||(S.bl[S.sel]&&!B[target.id].use))) doUse();
@@ -70,14 +71,20 @@ function frame(now){
   // brazo
   walkPh+=dt*moveAmt*9;
   const st=Math.floor(walkPh/Math.PI); if(st!==lastStep){ lastStep=st; const u=getB(Math.floor(P.x),Math.floor(P.y-.05),Math.floor(P.z)); if(u>0) sfx("step",u); }
-  let sw=0; if(mining&&target&&!panel) sw=Math.abs(Math.sin(now/1000*Math.PI*3.2)); else if(useSwing>0){ useSwing-=dt; sw=Math.sin(Math.max(0,1-useSwing/.25)*Math.PI); }
+  // golpe: al picar se repite; al soltar termina la vuelta en curso en vez de saltar a la posición de reposo
+  const swinging=mining&&target&&!panel, prevSw=swing;
+  if(swinging&&swing===0) swing=1e-4;
+  if(swing>0){ swing+=dt*2.6; if(swing>=1) swing=swinging?swing-1:0; }
+  if(swinging&&prevSw<.25&&swing>=.25) sfx("hit",target.id); // el golpe suena cuando el pico llega abajo
+  const sw=swing>0?strike(swing):0;
+  bobA+=(moveAmt-bobA)*Math.min(1,dt*8);
   armG.visible=!panel;
-  armG.rotation.set(ARM_BASE.rx-sw*.9,ARM_BASE.ry+sw*.35,0);
-  armG.position.set(ARM_BASE.x+Math.cos(walkPh)*.015,ARM_BASE.y+Math.abs(Math.sin(walkPh))*.03-sw*.05,ARM_BASE.z-sw*.1);
+  armG.rotation.set(ARM_BASE.rx-sw*.6,ARM_BASE.ry+sw*.3,0);
+  const sh=ARM_BASE.sh; armG.position.set(ARM_BASE.x-sh.x+Math.cos(walkPh)*.015*bobA,ARM_BASE.y-sh.y+Math.abs(Math.sin(walkPh))*.03*bobA-sw*.02,ARM_BASE.z-sh.z-sw*.14);
   if(Math.random()<(daylight<.3?.95:.5)) spawn(RIFT[0]+(Math.random()-.5)*12,4+Math.random()*2,RIFT[1]+(Math.random()-.5)*12,0,.5+Math.random()*.6,0,h2a(Math.random()<.5?"#9a62b0":"#7476a8"),3);
   if(S.flux>=50 && Math.random()<S.flux/150) spawn(P.x+(Math.random()-.5)*14,P.y+Math.random()*4,P.z+(Math.random()-.5)*14,0,.2,0,h2a("#c4579f"),2.5);
   if(sum(S.cru)&&Math.random()<.25){ const c=mixRGB(); spawn(CRUC[0]+.3+Math.random()*.4,liquid.position.y+CRUC[1]+.05,CRUC[2]+.3+Math.random()*.4,0,.5,0,c,.8); }
-  floaters.forEach((fl2,i)=>{ fl2.m.rotation.y+=dt*1.5; fl2.m.rotation.x+=dt*.7; fl2.m.position.y=fl2.base+Math.sin(now/400+i)*.06; });
+  floaters.forEach((fl2,i)=>{ fl2.m.position.y=fl2.base+Math.sin(now/400+i)*.06; });
 
   for(let i=parts.length-1;i>=0;i--){ const p=parts[i]; p.life-=dt; if(p.life<=0){ parts.splice(i,1); continue; } p.vy-=p.grav*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.z+=p.vz*dt; }
   for(let i=0;i<parts.length;i++){ const p=parts[i]; pPos[i*3]=p.x; pPos[i*3+1]=p.y; pPos[i*3+2]=p.z; pCol[i*3]=p.c[0]; pCol[i*3+1]=p.c[1]; pCol[i*3+2]=p.c[2]; }

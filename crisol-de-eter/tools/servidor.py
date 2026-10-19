@@ -8,9 +8,9 @@ la mochila, el crisol, el flux y las recetas. El servidor guarda la partida en p
 index.html); --nueva la empieza de cero. Solo usa la biblioteca estándar de Python y no necesita internet.
 
 Protocolo (mensajes JSON):
-  jugador → servidor  hola {name} · ops {seq, ops} · pos {p, a} · nombre {name} · aviso {text}
+  jugador → servidor  hola {name} · ops {seq, ops} · pos {p, a, ms} · nombre {name} · aviso {text}
   servidor → jugador  bienvenida {id, color, state, players, leader, dirs} · ops {from, ops} · estado {state, ack}
-                      pos {id, p, a} · entra {player} · sale {id} · nombre {id, name} · lider {id} · hora {time} · aviso {id, text}
+                      pos {id, p, a, ms} · entra {player} · sale {id} · nombre {id, name} · lider {id} · hora {time} · aviso {id, text}
 Las ops son cambios del estado compartido (ver applyOp en js/net.js, que aplica las mismas reglas que apply_op aquí).
 """
 import base64
@@ -173,9 +173,9 @@ class Game:
                 if ok:
                     self.dirty = True
                     self.broadcast({"t": "ops", "from": c.id, "ops": ok}, skip=c)
-            elif t == "pos" and isinstance(msg.get("p"), list) and len(msg["p"]) == 5 and all(isnum(v) for v in msg["p"]):
+            elif t == "pos" and isinstance(msg.get("p"), list) and len(msg["p"]) == 5 and all(isnum(v) for v in msg["p"]) and isnum(msg.get("ms")):
                 c.pos = msg["p"]
-                self.broadcast({"t": "pos", "id": c.id, "p": c.pos, "a": 1 if msg.get("a") else 0}, skip=c)
+                self.broadcast({"t": "pos", "id": c.id, "p": c.pos, "a": 1 if msg.get("a") else 0, "ms": msg["ms"]}, skip=c)
             elif t == "nombre":
                 c.name = clean_name(msg.get("name")) or c.name
                 self.broadcast({"t": "nombre", "id": c.id, "name": c.name})

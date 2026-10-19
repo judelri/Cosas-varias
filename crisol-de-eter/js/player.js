@@ -55,14 +55,14 @@ function placeBlock(t){
   if((x===t.x&&y===t.y&&z===t.z)||cur<0||(cur>0&&!B[cur].water&&!B[cur].plant)) return false;
   if(useCd>0) return true;
   if(inBody(x,y,z)||netInBody(x,y,z)){ useCd=.6; pick("Ahí hay alguien: apártate para poner el bloque."); return true; }
-  useCd=.22; useSwing=.25;
+  useCd=.25; swingStart();
   setBlock(x,y,z,id); S.placed[`${x},${y},${z}`]=1; sfx("place",id);
   if(--S.bl[id]<=0){ delete S.bl[id]; S.sel=+Object.keys(S.bl)[0]||0; }
   hud(); save(); return true;
 }
 function doUse(){
   if(panel||!target) return;
-  useSwing=.25;
+  swingStart();
   const b=B[target.id];
   if(target.id===5){ if(useCd>0) return; useCd=.35; give("agua"); pick("","","+ "+icon("agua","ic sm")+" Agua de manantial"); burst(target.x,target.y,target.z,"#5b9bd5",8); sfx("water"); hud(); save(); return; }
   if(b.use){ using=false; sfx("click"); return openPanel(b.use); }

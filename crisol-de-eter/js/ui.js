@@ -10,10 +10,10 @@ function hud(){
   // barra: primero los bloques para poner (se eligen), después los objetos de la mochila
   const bls=Object.keys(S.bl).map(Number); if(!S.bl[S.sel]) S.sel=bls[0]||0;
   const ids=Object.keys(ITEMS).filter(has).slice(0, Math.max(3,(isTouch?7:10)-bls.length));
-  $("hotbar").innerHTML = bls.map((id,i)=>`<button class="slot bl${id===S.sel?" sel":""}" data-bl="${id}" title="${B[id].n}${isTouch?"":` (${i+1})`}" aria-pressed="${id===S.sel}">${bicon(id)}<span class="n">${S.bl[id]}</span></button>`).join("")
+  setHTML($("hotbar"), bls.map((id,i)=>`<button class="slot bl${id===S.sel?" sel":""}" data-bl="${id}" title="${B[id].n}${isTouch?"":` (${i+1})`}" aria-pressed="${id===S.sel}">${bicon(id)}<span class="n">${S.bl[id]}</span></button>`).join("")
     + (bls.length&&ids.length?`<i class="sep"></i>`:"")
-    + ids.map(i=>`<div class="slot" title="${ITEMS[i].n}">${icon(i)}<span class="n">${has(i)}</span></div>`).join("");
-  $("mute").innerHTML=`<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4Z" fill="currentColor"/><path d="${S.mute?"M16 9l5 6M21 9l-5 6":"M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+    + ids.map(i=>`<div class="slot" title="${ITEMS[i].n}">${icon(i)}<span class="n">${has(i)}</span></div>`).join(""));
+  setHTML($("mute"),`<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4Z" fill="currentColor"/><path d="${S.mute?"M16 9l5 6M21 9l-5 6":"M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`);
   $("mute").setAttribute("aria-label",S.mute?"Activar el sonido":"Silenciar");
   teamHud(); updateCauldron();
 }
@@ -108,7 +108,7 @@ function renderPanel(){
   else if(panel==="help"){ h=`<h2>Crisol de Éter</h2><p class="hint" style="font-size:.95rem">Pica bloques para reunir materiales, escanéalos para descubrir sus esencias, disuélvelos en el crisol y forja objetos en el altar. Vigila el flux. La meta es el Corazón de Éter.</p>
     ${isTouch?`<div class="keys"><kbd>Joystick</kbd><span>Moverte</span><kbd>Arrastrar</kbd><span>Mirar</span><kbd>Picar</kbd><span>Mantener para romper</span><kbd>Usar</kbd><span>Crisol, altar, estantería, agua o poner un bloque</span></div>`:`<div class="keys"><kbd>WASD</kbd><span>Moverte · Espacio salta</span><kbd>Clic izq.</kbd><span>Mantén para picar</span><kbd>Clic der. / E</kbd><span>Usar o poner un bloque</span><kbd>1–9</kbd><span>Elegir bloque</span><kbd>F</kbd><span>Escanear</span><kbd>I · G</kbd><span>Mochila · Grimorio</span></div>`}
     <p class="note" style="margin-bottom:12px">Empiezas en el taller: el crisol está a tu izquierda, el altar a tu derecha y la estantería, donde se investigan las recetas, al fondo.</p><button class="btn pri" data-act="play">Jugar</button>`; }
-  pb.innerHTML=h;
+  setHTML(pb,h);
   if(panel==="equipo") teamList();
 }
 $("panel").addEventListener("click",ev=>{

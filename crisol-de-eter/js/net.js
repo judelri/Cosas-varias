@@ -9,7 +9,7 @@
 //   u: lista sin repetidos · v: valor entero (gana el último)
 const SH={n:["flux","mined","rifts"],m:["inv","cru","bl"],s:["world","placed","resp"],u:["scanned","res"],v:["won","rsch"]};
 const SHARED=Object.values(SH).flat();
-const NET={ws:null,id:0,color:"",leader:false,base:null,seq:0,pending:[],players:{},dirs:[],up:false,ever:false,sendT:0,lastPos:"",posT:0,panelT:0,panelDirty:false};
+const NET={ws:null,id:0,color:"",leader:false,base:null,seq:0,pending:[],players:{},dirs:[],up:false,ever:false,sendT:0,tErr:0,panelT:0,panelDirty:false};
 const clone=o=>JSON.parse(JSON.stringify(o));
 const sharedOf=s=>clone(Object.fromEntries(SHARED.map(f=>[f,s[f]])));
 const NAME_KEY="crisol-nombre";
@@ -106,8 +106,11 @@ const NET_ON={
   },
   ops(m){ const dirty=new Set(); m.ops.forEach(o=>{ applyOp(NET.base,o); applyOp(S,o,true,dirty); }); flushChunks(dirty); afterRemote(); },
   estado(m){ adoptState(m.state,m.ack); },
-  hora(m){ if(Number.isFinite(m.time)) S.time=m.time; },
-  pos(m){ const a=NET.players[m.id]; if(a){ a.target=m.p; a.a=m.a; } },
+  // la hora del servidor se alcanza de a poco (si no, el sol da saltitos); solo salta si la diferencia es grande
+  hora(m){ if(!Number.isFinite(m.time)) return; let d=m.time-S.time; d-=Math.round(d); if(Math.abs(d)>.01){ S.time=m.time; NET.tErr=0; } else NET.tErr=d; },
+  // cada posición trae la hora de quien la mandó (ms); se guarda para interpolar (ver updateAvatars)
+  pos(m){ const a=NET.players[m.id]; if(!a||!Number.isFinite(m.ms)) return; const d=performance.now()-m.ms;
+    a.off=a.buf.length?Math.min(a.off,d):d; a.buf.push({t:m.ms,p:m.p}); if(a.buf.length>20) a.buf.shift(); a.target=m.p; a.a=m.a; },
   entra(m){ addAvatar(m.player); pick(`${m.player.name} se unió al equipo`,"g"); hud(); teamList(); },
   sale(m){ const a=NET.players[m.id]; if(a){ pick(`${a.name} salió de la partida`); removeAvatar(m.id); hud(); teamList(); } },
   nombre(m){ const a=NET.players[m.id]; if(a){ a.name=m.name; setLabel(a); } hud(); teamList(); },
@@ -143,7 +146,8 @@ function addAvatar(p){
   const head=new THREE.Mesh(new THREE.BoxGeometry(.44,.44,.44),[skin,skin,hair,skin,hair,lam({map:FACE})]); head.position.y=1.57; g.add(head);
   const label=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthTest:false,fog:false})); label.position.y=2.1; label.renderOrder=5; g.add(label);
   scene.add(g);
-  const a=NET.players[p.id]={id:p.id,name:p.name,color:p.color,g,head,legL,legR,armL,armR,label,target:p.p,a:0,ph:0,seen:false};
+  const a=NET.players[p.id]={id:p.id,name:p.name,color:p.color,g,head,legL,legR,armL,armR,label,target:p.p,a:0,
+    buf:[],off:0,vis:0,ph:0,sw:0,armRx:0};
   setLabel(a); g.visible=!!p.p;
 }
 function removeAvatar(id){
@@ -151,16 +155,27 @@ function removeAvatar(id){
   a.g.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) [].concat(o.material).forEach(m=>{ if(m.map&&m.map!==FACE) m.map.dispose(); m.dispose(); }); });
   delete NET.players[id];
 }
+// Los compañeros se dibujan LAG ms en el pasado, interpolando entre las posiciones guardadas con la hora de quien
+// las mandó (off = menor diferencia vista entre relojes): el movimiento sale parejo aunque los mensajes lleguen a destiempo.
+const LAG=120;
+function sampleAt(b,rt){
+  if(rt<=b[0].t) return b[0].p;
+  for(let i=b.length-1;i>=0;i--) if(b[i].t<=rt){ const n=b[i+1]; if(!n) return b[i].p;
+    const k=(rt-b[i].t)/(n.t-b[i].t||1), p=b[i].p, q=n.p; let dy=q[3]-p[3]; dy=Math.atan2(Math.sin(dy),Math.cos(dy));
+    return [p[0]+(q[0]-p[0])*k,p[1]+(q[1]-p[1])*k,p[2]+(q[2]-p[2])*k,p[3]+dy*k,p[4]+(q[4]-p[4])*k]; }
+}
 function updateAvatars(dt,now){
   for(const a of Object.values(NET.players)){
-    const t=a.target; if(!t){ a.g.visible=false; continue; }
-    const g=a.g; if(!a.seen){ g.position.set(t[0],t[1],t[2]); g.rotation.y=t[3]; a.seen=true; }
-    g.visible=true; const k=Math.min(1,dt*12), ox=g.position.x, oz=g.position.z;
-    g.position.x+=(t[0]-g.position.x)*k; g.position.y+=(t[1]-g.position.y)*k; g.position.z+=(t[2]-g.position.z)*k;
-    let dy=t[3]-g.rotation.y; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); g.rotation.y+=dy*k; a.head.rotation.x=t[4]*.8;
-    const sp=Math.hypot(g.position.x-ox,g.position.z-oz)/Math.max(dt,1e-3); a.ph+=dt*Math.min(sp,5)*2.2;
-    const sw=Math.sin(a.ph)*Math.min(1,sp/3)*.7; a.legL.rotation.x=sw; a.legR.rotation.x=-sw; a.armL.rotation.x=-sw;
-    a.armR.rotation.x = a.a ? -1.2+Math.sin(now/1000*Math.PI*6)*.5 : sw;
+    const q=a.buf.length?sampleAt(a.buf,now-a.off-LAG):a.target; if(!q){ a.g.visible=false; continue; }
+    const g=a.g, ox=g.position.x, oz=g.position.z, first=!g.visible;
+    g.visible=true; g.position.set(q[0],q[1],q[2]); g.rotation.y=q[3]; a.head.rotation.x=q[4]*.8;
+    // pasos según lo que de verdad se movió en este fotograma, suavizado
+    const sp=first?0:Math.hypot(q[0]-ox,q[2]-oz)/Math.max(dt,1e-3), s=Math.min(1,dt*10);
+    a.vis+=(Math.min(sp,5)-a.vis)*s; a.ph+=dt*a.vis*2.4;
+    const sw=Math.sin(a.ph)*Math.min(1,a.vis/2.5)*.7; a.legL.rotation.x=sw; a.legR.rotation.x=-sw; a.armL.rotation.x=-sw;
+    // picar: el brazo derecho, levantado hacia adelante, golpea hacia abajo y termina la vuelta al soltar
+    if(a.a) a.sw=(a.sw+dt*2.6)%1; else if(a.sw>0){ a.sw+=dt*2.6; if(a.sw>=1) a.sw=0; }
+    a.armRx+=((a.a||a.sw>0?1.6-strike(a.sw)*1.1:sw)-a.armRx)*Math.min(1,dt*14); a.armR.rotation.x=a.armRx;
   }
 }
 // ¿la celda toca el cuerpo de algún compañero?
@@ -174,17 +189,19 @@ function netTick(dt){
   if(!teamMode) return;
   const now=performance.now();
   updateAvatars(dt,now);
+  if(NET.tErr){ const c=NET.tErr*Math.min(1,dt*2); S.time=(S.time+c+1)%1; NET.tErr-=c; }
   NET.sendT+=dt; if(NET.sendT<.1) return; NET.sendT=0;
   netFlush();
-  const p=[P.x,P.y,P.z,P.yaw,P.pitch].map(v=>Math.round(v*100)/100), a=(mining||using)&&!panel?1:0, key=p.join()+a;
-  if(key!==NET.lastPos||now-NET.posT>2000){ NET.lastPos=key; NET.posT=now; netSend({t:"pos",p,a}); }
+  // la posición va siempre (10 por segundo), también quieto: así los demás interpolan sin huecos
+  const p=[P.x,P.y,P.z,P.yaw,P.pitch].map(v=>Math.round(v*100)/100);
+  netSend({t:"pos",p,a:(mining||using)&&!panel?1:0,ms:Math.round(now)});
   if(NET.panelDirty&&panel&&now-NET.panelT>250){ NET.panelDirty=false; NET.panelT=now; renderPanel(); }
 }
 // la fila del equipo en el HUD y la lista del panel
 function teamHud(){
   const el=$("team"); el.hidden=!teamMode; if(!teamMode) return;
   const dot=(c,n)=>`<span><i style="background:${c}"></i>${esc(n)}</span>`;
-  el.innerHTML = NET.up ? dot(NET.color,myName()||"Tú")+Object.values(NET.players).map(a=>dot(a.color,a.name)).join("") : `<span class="off">Sin conexión: reintentando…</span>`;
+  setHTML(el, NET.up ? dot(NET.color,myName()||"Tú")+Object.values(NET.players).map(a=>dot(a.color,a.name)).join("") : `<span class="off">Sin conexión: reintentando…</span>`);
 }
 function teamList(){
   const el=$("teamList"); if(!el) return;
