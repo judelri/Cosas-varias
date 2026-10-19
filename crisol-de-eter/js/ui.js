@@ -1,4 +1,4 @@
-// Crisol de Éter — HUD, paneles (mochila, crisol, altar, investigación, grimorio) y controles táctiles/teclado.
+// Crisol de Éter — HUD, paneles (mochila, crisol, altar, investigación, grimorio, equipo) y controles táctiles/teclado.
 // Script clásico (sin módulos): comparte el ámbito global con los demás archivos de js/.
 
 /* ================= HUD y paneles ================= */
@@ -15,7 +15,7 @@ function hud(){
     + ids.map(i=>`<div class="slot" title="${ITEMS[i].n}">${icon(i)}<span class="n">${has(i)}</span></div>`).join("");
   $("mute").innerHTML=`<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4Z" fill="currentColor"/><path d="${S.mute?"M16 9l5 6M21 9l-5 6":"M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
   $("mute").setAttribute("aria-label",S.mute?"Activar el sonido":"Silenciar");
-  updateCauldron();
+  teamHud(); updateCauldron();
 }
 function selectBlock(id){ if(!S.bl[id]||id===S.sel) return; S.sel=id; sfx("click"); hud(); save(); }
 function cycleBlock(d){ const bls=Object.keys(S.bl).map(Number); if(bls.length<2) return; selectBlock(bls[(bls.indexOf(S.sel)+d+bls.length)%bls.length]); }
@@ -82,6 +82,14 @@ function renderPanel(){
         return `<div class="row">${icon(r.id)}<div style="min-width:0"><div class="nm">${ITEMS[r.id].n} <span class="note">${r.cat?"crisol":"altar"} · ${resLen(r)} esencias, ${resTries(r)} intentos</span></div>${body}</div></div>`; }).join("")}</div>`;
     }
   }
+  else if(panel==="equipo"){
+    h=`<h2>Partida en equipo</h2><p class="hint">Todos los que abren el juego desde este servidor comparten el mundo, la mochila, los bloques, el crisol, el flux y las recetas. La partida se guarda en el equipo que corre el servidor.</p>
+    <h3>Tu nombre</h3><div class="namerow"><input id="nameIn" maxlength="16" autocomplete="nickname" placeholder="Cómo te verán los demás" value="${esc(myName())}"><button class="btn pri" data-act="setname">Guardar</button></div>
+    <h3>En línea</h3><div class="rows" id="teamList" style="margin:8px 0 14px"></div>
+    <h3>Invitar</h3><p class="note">Conectados a la misma Wi-Fi, que abran en el navegador:</p>
+    <div class="chips">${(NET.dirs.length?NET.dirs:[location.origin]).map(d=>`<span class="chip mono" style="padding:3px 10px">${esc(d)}</span>`).join("")}</div>
+    <div style="margin-top:12px"><button class="btn pri" data-act="closep">Jugar</button></div>`;
+  }
   else if(panel==="grimorio"){
     const K=known();
     h=`<h2>Grimorio</h2>
@@ -94,13 +102,14 @@ function renderPanel(){
     <h3>Investigación</h3><ul class="rules"><li>Al principio solo conoces la Sal purificadora y la Tiza arcana; las demás recetas se descifran en la estantería.</li><li>Necesitas conocer las esencias con las que resuena la receta y una Pluma para escribir la nota.</li><li>Una nota perdida suma 3 de flux.</li></ul>
     <h3>Flux</h3><ul class="rules"><li>Desbordar el crisol (más de ${CAP}) convierte el exceso en flux.</li><li>Vaciarlo genera un tercio de lo derramado.</li><li>Picar en la Grieta y las infusiones inestables suman flux.</li><li>Desde 50, cada medio minuto la bruma puede corromper un objeto.</li><li>A 100 se abre una grieta: pierdes el crisol y dos objetos.</li><li>Sal purificadora: −25. Amuleto de calma: generas la mitad.</li></ul>
     <h3>Partida</h3><p class="note">${S.mined} bloques picados · ${S.rifts} grietas · ${S.scanned.length} objetos escaneados · ${S.res.length}/${CRU.length+INF.length} recetas investigadas</p>
-    <div style="margin-top:8px">${resetAsk?`<button class="btn" data-act="reset2" style="border-color:var(--bad)">Sí, borrar la partida</button> <button class="btn" data-act="reset0">Cancelar</button>`:`<button class="btn" data-act="reset1">Empezar de nuevo</button>`}</div>`;
+    ${teamMode?`<p class="note" style="margin-top:6px">Es una partida en equipo: vive en el servidor. Para empezar de cero, ciérralo y ábrelo con <span class="mono">python3 tools/servidor.py --nueva</span>.</p>`:`<div style="margin-top:8px">${resetAsk?`<button class="btn" data-act="reset2" style="border-color:var(--bad)">Sí, borrar la partida</button> <button class="btn" data-act="reset0">Cancelar</button>`:`<button class="btn" data-act="reset1">Empezar de nuevo</button>`}</div>`}`;
   }
   else if(panel==="win"){ h=`<h2>Corazón de Éter</h2><p class="hint" style="font-size:1rem">Lo forjaste tras picar ${S.mined} bloques${S.rifts?` y sobrevivir a ${S.rifts} grieta(s)`:" sin abrir ninguna grieta"}. El taller sigue abierto.</p><button class="btn pri" data-act="closep">Seguir explorando</button>`; }
   else if(panel==="help"){ h=`<h2>Crisol de Éter</h2><p class="hint" style="font-size:.95rem">Pica bloques para reunir materiales, escanéalos para descubrir sus esencias, disuélvelos en el crisol y forja objetos en el altar. Vigila el flux. La meta es el Corazón de Éter.</p>
     ${isTouch?`<div class="keys"><kbd>Joystick</kbd><span>Moverte</span><kbd>Arrastrar</kbd><span>Mirar</span><kbd>Picar</kbd><span>Mantener para romper</span><kbd>Usar</kbd><span>Crisol, altar, estantería, agua o poner un bloque</span></div>`:`<div class="keys"><kbd>WASD</kbd><span>Moverte · Espacio salta</span><kbd>Clic izq.</kbd><span>Mantén para picar</span><kbd>Clic der. / E</kbd><span>Usar o poner un bloque</span><kbd>1–9</kbd><span>Elegir bloque</span><kbd>F</kbd><span>Escanear</span><kbd>I · G</kbd><span>Mochila · Grimorio</span></div>`}
     <p class="note" style="margin-bottom:12px">Empiezas en el taller: el crisol está a tu izquierda, el altar a tu derecha y la estantería, donde se investigan las recetas, al fondo.</p><button class="btn pri" data-act="play">Jugar</button>`; }
   pb.innerHTML=h;
+  if(panel==="equipo") teamList();
 }
 $("panel").addEventListener("click",ev=>{
   const b=ev.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act,id=b.dataset.id;
@@ -112,7 +121,8 @@ $("panel").addEventListener("click",ev=>{
   else if(a==="rpick"){ const R=S.rsch; if(R&&R.cur.length<resLen(recipe(R.id))) R.cur.push(id); sfx("click"); }
   else if(a==="rdel"){ if(S.rsch) S.rsch.cur.pop(); sfx("click"); }
   else if(a==="reset1") resetAsk=true; else if(a==="reset0") resetAsk=false;
-  else if(a==="reset2"){ resetting=true; S=fresh(); save(); location.reload(); return; }
+  else if(a==="setname"){ setName($("nameIn").value); hud(); teamList(); return; }
+  else if(a==="reset2"&&!teamMode){ resetting=true; S=fresh(); save(); location.reload(); return; }
   hud(); save(); if(panel) renderPanel();
 });
 document.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>{ sfx("click"); openPanel(b.dataset.open); }));
@@ -138,6 +148,7 @@ document.addEventListener("mouseup",e=>{ if(e.button===0) mining=false; if(e.but
 document.addEventListener("wheel",e=>{ if(locked&&!panel&&e.deltaY) cycleBlock(Math.sign(e.deltaY)); },{passive:true});
 document.addEventListener("keydown",e=>{
   const k=e.key.toLowerCase();
+  if(e.target.tagName==="INPUT"){ if(k==="enter"&&e.target.id==="nameIn") $("panel").querySelector('[data-act="setname"]').click(); else if(k==="escape") closePanel(); return; }
   if(panel){ if(!e.repeat&&(k==="escape"||k==="e"||(k==="i"&&panel==="mochila")||(k==="g"&&panel==="grimorio"))) closePanel(); return; }
   keys[k]=true;
   if(k==="e") doUse(); else if(k==="f") doScan(); else if(k==="i") openPanel("mochila"); else if(k==="g") openPanel("grimorio"); else if(k==="q") mining=true;

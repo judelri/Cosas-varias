@@ -41,7 +41,7 @@ function breakBlock(t){
   else {
     const night=daylight<.3&&b.flux; // de noche la Grieta suelta el doble y reacciona el doble
     (b.drop||[]).forEach(([it,p])=>{ if(Math.random()<p){ const n=night?2:1; give(it,n); got.push([it,n]); spawnDrop(it,t.x,t.y,t.z); } });
-    if(b.resp) S.resp.push({k,id:t.id,t:Date.now()+60000});
+    if(b.resp) S.resp[k]={id:t.id,t:Date.now()+60000};
     if(b.flux) addFlux(b.flux*(night?2:1),night?"la grieta se agita de noche":"la grieta reacciona");
   }
   const parts=got.map(([i,n])=>icon(i,"ic sm")+" "+ITEMS[i].n+(n>1?" ×"+n:""));
@@ -54,7 +54,7 @@ function placeBlock(t){
   const {px:x,py:y,pz:z}=t, cur=getB(x,y,z);
   if((x===t.x&&y===t.y&&z===t.z)||cur<0||(cur>0&&!B[cur].water&&!B[cur].plant)) return false;
   if(useCd>0) return true;
-  if(inBody(x,y,z)){ useCd=.6; pick("Te estorbas: apártate para poner el bloque."); return true; }
+  if(inBody(x,y,z)||netInBody(x,y,z)){ useCd=.6; pick("Ahí hay alguien: apártate para poner el bloque."); return true; }
   useCd=.22; useSwing=.25;
   setBlock(x,y,z,id); S.placed[`${x},${y},${z}`]=1; sfx("place",id);
   if(--S.bl[id]<=0){ delete S.bl[id]; S.sel=+Object.keys(S.bl)[0]||0; }
@@ -108,11 +108,11 @@ function infuse(rid){
       for(const [i,n] of Object.entries(infNeeds(r))) take(i,n);
       for(const [e,n] of Object.entries(r.cost)){ S.cru[e]-=n; if(S.cru[e]<=0) delete S.cru[e]; }
       give(r.id); if(!S.scanned.includes(r.id)) S.scanned.push(r.id);
-      pick(`Infusión completa: ${ITEMS[r.id].n}`,"g"); sfx("success"); burst(ALT[0],ALT[1]+.8,ALT[2],"#f2d36b",40);
+      pick(`Infusión completa: ${ITEMS[r.id].n}`,"g"); sfx("success"); teamSay(`completó la infusión: ${ITEMS[r.id].n}`); burst(ALT[0],ALT[1]+.8,ALT[2],"#f2d36b",40);
       if(r.final && !S.won){ S.won=true; setTimeout(()=>openPanel("win"),600); }
     } else {
       for(const [e,n] of Object.entries(r.cost)) if(S.cru[e]){ S.cru[e]=Math.max(0,S.cru[e]-Math.ceil(n/2)); if(!S.cru[e]) delete S.cru[e]; }
-      pick(`${why}: recuperas los objetos, pierdes esencia.`,"f"); sfx("fail"); burst(ALT[0],ALT[1]+.8,ALT[2],"#c4579f",40); addFlux(10,"infusión fallida");
+      pick(`${why}: recuperas los objetos, pierdes esencia.`,"f"); sfx("fail"); teamSay(`falló una infusión (${why.toLowerCase()})`); burst(ALT[0],ALT[1]+.8,ALT[2],"#c4579f",40); addFlux(10,"infusión fallida");
     }
     clearFloaters(); busy=null; hud(); save();
   };

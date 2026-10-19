@@ -106,12 +106,18 @@ function buildChunk(cx,cz){
   const ms=new THREE.Mesh(geo(s),solidMat), mw=new THREE.Mesh(geo(w),waterMat), mp=new THREE.Mesh(geo(p),plantMat); mw.renderOrder=1;
   scene.add(ms,mw,mp); chunks[key]={s:ms,w:mw,p:mp};
 }
-for(let cx=0;cx<W/CH;cx++) for(let cz=0;cz<D/CH;cz++) buildChunk(cx,cz);
+function buildAll(){ for(let cx=0;cx<W/CH;cx++) for(let cz=0;cz<D/CH;cz++) buildChunk(cx,cz); }
+buildAll();
+// chunks a rehacer al cambiar una celda (el suyo y el vecino si la celda está en el borde)
+function chunksOf(x,z,set){
+  const cx=Math.floor(x/CH), cz=Math.floor(z/CH); set.add(cx+","+cz);
+  if(x%CH===0&&cx>0) set.add((cx-1)+","+cz); if(x%CH===CH-1&&cx<W/CH-1) set.add((cx+1)+","+cz);
+  if(z%CH===0&&cz>0) set.add(cx+","+(cz-1)); if(z%CH===CH-1&&cz<D/CH-1) set.add(cx+","+(cz+1));
+  return set;
+}
 function setBlock(x,y,z,id){
   world[ix(x,y,z)]=id; S.world[`${x},${y},${z}`]=id;
-  const cx=Math.floor(x/CH), cz=Math.floor(z/CH); buildChunk(cx,cz);
-  if(x%CH===0&&cx>0) buildChunk(cx-1,cz); if(x%CH===CH-1&&cx<W/CH-1) buildChunk(cx+1,cz);
-  if(z%CH===0&&cz>0) buildChunk(cx,cz-1); if(z%CH===CH-1&&cz<D/CH-1) buildChunk(cx,cz+1);
+  for(const k of chunksOf(x,z,new Set())){ const [cx,cz]=k.split(",").map(Number); buildChunk(cx,cz); }
 }
 
 /* objetos del taller */

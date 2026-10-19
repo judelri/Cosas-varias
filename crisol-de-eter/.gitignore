@@ -1,3 +1,5 @@
 dist/
 .DS_Store
 node_modules/
+partida-equipo.json
+partida-equipo.tmp

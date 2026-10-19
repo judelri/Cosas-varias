@@ -36,6 +36,15 @@ h3{color:var(--brass);font-size:1.1rem}
 .bar>i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#7d3d8a,var(--flux));transition:width .4s}
 .fstate{font-size:.75rem;color:var(--muted);margin-top:3px}
 .goal{font-size:.75rem;color:var(--brass);margin-top:2px}
+.team{display:flex;flex-wrap:wrap;gap:2px 10px;margin-top:4px;padding:3px 0;background:none;border:0;border-top:1px solid var(--line);width:100%;text-align:left;font-size:.75rem;color:var(--fg)}
+.team span{display:inline-flex;align-items:center;gap:4px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team i,.row.tm i{display:inline-block;width:9px;height:9px;border-radius:2px;flex:none}
+.team .off{color:var(--flux)}
+.row.tm{grid-template-columns:auto 1fr;align-items:center;padding:8px 10px}
+.row.tm i{width:14px;height:14px}
+.namerow{display:flex;gap:6px;margin:8px 0 14px}
+.namerow input{flex:1;min-width:0;font:inherit;color:var(--fg);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+.namerow input:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
 .clockrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px}
 .clock{font-size:.75rem;color:var(--muted)}
 .snd{background:#17141c;border:1px solid var(--line);border-radius:6px;width:34px;height:28px;display:grid;place-items:center;padding:0;color:var(--muted)}

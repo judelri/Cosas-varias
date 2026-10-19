@@ -55,17 +55,18 @@ function frame(now){
   // tiempo del mundo
   tick1+=dt; tick30+=dt; savet+=dt;
   if(tick1>1){ tick1=0; const now2=Date.now();
-    S.resp=S.resp.filter(r=>{ if(now2<r.t) return true; const [x,y,z]=r.k.split(",").map(Number); if(getB(x,y,z)!==0) return false;
-      if(inBody(x,y,z)) return true; setBlock(x,y,z,r.id); return false; });
+    // en equipo, las reapariciones y la bruma las hace un solo jugador (el guía) para que no se repitan
+    if(!teamMode||NET.leader) for(const [k,r] of Object.entries(S.resp)){ if(now2<r.t) continue; const [x,y,z]=k.split(",").map(Number);
+      if(getB(x,y,z)!==0){ delete S.resp[k]; continue; } if(inBody(x,y,z)||netInBody(x,y,z)) continue; setBlock(x,y,z,r.id); delete S.resp[k]; }
     if($("clock").textContent!==dayPart()) hud(); }
-  if(tick30>30){ tick30=0; if(S.flux>=50 && Math.random()<.35){ const raws=Object.keys(S.inv).filter(i=>!ITEMS[i].crafted&&i!=="corrupta"); if(raws.length){ const v=raws[rnd(raws.length)]; take(v); give("corrupta"); pick(`La bruma corrompió: ${ITEMS[v].n}`,"f"); sfx("corrupt"); hud(); } } }
+  if(tick30>30){ tick30=0; if((!teamMode||NET.leader) && S.flux>=50 && Math.random()<.35){ const raws=Object.keys(S.inv).filter(i=>!ITEMS[i].crafted&&i!=="corrupta"); if(raws.length){ const v=raws[rnd(raws.length)]; take(v); give("corrupta"); pick(`La bruma corrompió: ${ITEMS[v].n}`,"f"); sfx("corrupt"); teamSay(`vio cómo la bruma corrompía: ${ITEMS[v].n}`); hud(); } } }
   if(savet>5){ savet=0; persist(); }
 
   // ambiente
   S.time=(S.time+dt/DAY_LEN*(daylight<.5?2:1))%1;
   skyG.position.copy(camera.position); updateSky(); cloudTex.offset.x+=dt*.0015;
   ambient(dt,daylight,Math.hypot(P.x-CRUC[0]-.5,P.z-CRUC[2]-.5)<6,sum(S.cru)>0);
-  updateDrops(dt);
+  updateDrops(dt); netTick(dt);
   // brazo
   walkPh+=dt*moveAmt*9;
   const st=Math.floor(walkPh/Math.PI); if(st!==lastStep){ lastStep=st; const u=getB(Math.floor(P.x),Math.floor(P.y-.05),Math.floor(P.z)); if(u>0) sfx("step",u); }

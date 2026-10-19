@@ -66,5 +66,6 @@ function genWorld(){
   for(let x=LAB.x-1;x<=LAB.x+1;x++) for(let y=LAB.y+1;y<=LAB.y+2;y++) world[ix(x,y,LAB.z-5)]=16;
   world[ix(...CRUC)]=17; world[ix(...ALT)]=18; PEDS.forEach(p=>world[ix(...p)]=19);
 }
-genWorld();
-for(const [k,id] of Object.entries(S.world)){ const [x,y,z]=k.split(",").map(Number); if(getB(x,y,z)>=0) world[ix(x,y,z)]=id; }
+// mundo base (siempre el mismo) + los cambios guardados en S.world
+function loadWorld(){ world.fill(0); wseed=4242; genWorld(); for(const [k,id] of Object.entries(S.world)){ const [x,y,z]=k.split(",").map(Number); if(getB(x,y,z)>=0) world[ix(x,y,z)]=id; } }
+loadWorld();

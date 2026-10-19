@@ -5,16 +5,19 @@
 const KEY = "crisol-eter-3d-v1";
 // bl: bloques para poner · sel: bloque elegido · placed: bloques puestos por el jugador · time: hora (0 amanecer, .5 anochecer)
 // res: recetas investigadas · rsch: investigación en curso
-const fresh = () => ({inv:{},scanned:[],cru:{},flux:5,world:{},resp:[],mined:0,rifts:0,won:false,player:null,
+const fresh = () => ({inv:{},scanned:[],cru:{},flux:5,world:{},resp:{},mined:0,rifts:0,won:false,player:null,
   bl:{},sel:0,placed:{},time:.06,mute:false,res:["sal","tiza"],rsch:null});
 let S = fresh();
 try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(fresh(), JSON.parse(raw)); } catch(e) {}
 for (const k of Object.keys(S.inv)) if (!(S.inv[k]>0)) delete S.inv[k];
+if (Array.isArray(S.resp)) S.resp = Object.fromEntries(S.resp.map(r=>[r.k,{id:r.id,t:r.t}])); // antes era una lista
 // partidas de antes de la investigación: lo que ya forjaste queda investigado
 S.scanned.forEach(i=>{ if((CRU.some(r=>r.id===i)||INF.some(r=>r.id===i)) && !S.res.includes(i)) S.res.push(i); });
 if (window.claude?.hot?.data?.S) S = window.claude.hot.data.S;
 window.claude?.hot?.snapshot?.(() => ({S}));
-let saveT = 0; const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} };
+// En una partida en equipo (js/net.js) lo compartido vive en el servidor: aquí solo se guarda lo personal
+let teamMode=false;
+const save = () => { try { localStorage.setItem(teamMode?KEY+"-equipo":KEY, JSON.stringify(teamMode?{player:S.player,sel:S.sel,mute:S.mute}:S)); } catch(e) {} };
 
 const $ = id => document.getElementById(id);
 const sum = o => Object.values(o).reduce((a,b)=>a+b,0);
@@ -90,7 +93,7 @@ function rift(){
   sfx("rift"); S.rifts++; S.flux = 60; S.cru = {};
   const pool = Object.keys(S.inv).filter(i=>i!=="corazon"); const lost=[];
   for (let k=0;k<2&&pool.length;k++){ const p=pool[rnd(pool.length)]; take(p); lost.push(ITEMS[p].n); if(!has(p)) pool.splice(pool.indexOf(p),1); }
-  pick("¡Se abrió una grieta! El crisol se vació"+(lost.length?" y perdiste "+lost.join(", "):""),"f");
+  pick("¡Se abrió una grieta! El crisol se vació"+(lost.length?" y perdiste "+lost.join(", "):""),"f"); teamSay("abrió una grieta: el crisol se vació");
   $("flash").style.opacity=.55; setTimeout(()=>$("flash").style.opacity=0,250); shake=.8;
 }
 let scanT;
@@ -121,7 +124,7 @@ function catalyze(rid){
   const r=CRU.find(x=>x.id===rid); if(!canCat(r)) return;
   take(r.cat); for(const [e,n] of Object.entries(r.cost)){ S.cru[e]-=n; if(S.cru[e]<=0) delete S.cru[e]; }
   give(r.id); if(!S.scanned.includes(r.id)) S.scanned.push(r.id);
-  pick(`El crisol forjó: ${ITEMS[r.id].n}`,"g"); crucibleSplash({luz:4,orden:4}); sfx("forge");
+  pick(`El crisol forjó: ${ITEMS[r.id].n}`,"g"); crucibleSplash({luz:4,orden:4}); sfx("forge"); teamSay(`forjó ${ITEMS[r.id].n} en el crisol`);
 }
 function emptyCru(){ const t=sum(S.cru); S.cru={}; sfx("water"); addFlux(Math.ceil(t/3),"esencia derramada"); }
 function useSal(){ take("sal"); const d=Math.min(25,S.flux); S.flux-=d; pick(`Sal purificadora: −${d} flux`,"g"); sfx("forge"); }
@@ -153,7 +156,7 @@ function resFeedback(secret,guess){
 function guessResearch(){
   const R=S.rsch; if(!R) return; const r=recipe(R.id); if(R.cur.length<resLen(r)) return;
   const fb=resFeedback(R.secret,R.cur); R.guesses.push({g:R.cur,fb}); R.cur=[];
-  if(fb.every(v=>v===2)){ S.res.push(R.id); S.rsch=null; pick(`Investigación completa: ya puedes forjar ${ITEMS[r.id].n}`,"g"); sfx("success"); return; }
+  if(fb.every(v=>v===2)){ S.res.push(R.id); S.rsch=null; pick(`Investigación completa: ya puedes forjar ${ITEMS[r.id].n}`,"g"); sfx("success"); teamSay(`descifró la receta de ${ITEMS[r.id].n}`); return; }
   if(R.guesses.length>=resTries(r)){ S.rsch=null; pick("La nota se emborronó y la resonancia se perdió","f"); sfx("fail"); addFlux(3,"investigación fallida"); return; }
   sfx("pulse");
 }
