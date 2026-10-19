@@ -54,6 +54,11 @@ const SFX={
   whisper(){ noise(.9,{f:450,to:950,q:7,vol:.06,att:.25}); },
   poof(){ noise(.35,{f:1300,to:280,q:1.4,vol:.18}); },
   chime(){ tone(1568,.35,{vol:.04}); tone(2093,.3,{at:.05,vol:.03}); },
+  // la mascota
+  boing(){ tone(180,.22,{to:520,vol:.07}); },
+  slam(){ noise(.5,{type:"lowpass",f:400,to:80,vol:.45}); tone(90,.4,{type:"triangle",to:45,vol:.15}); },
+  bip(){ tone(880,.07,{type:"square",vol:.025}); tone(660,.09,{at:.09,type:"square",vol:.025}); },
+  roar(){ [440,554,659].forEach((f,i)=>tone(f,.2,{at:i*.08,type:"square",vol:.04})); },
   // jugador
   hurt(){ tone(240,.18,{type:"square",to:150,vol:.05}); noise(.12,{type:"lowpass",f:900,vol:.18}); },
   eat(){ for(let i=0;i<3;i++) noise(.06,{at:i*.11,f:1800+Math.random()*600,q:1.5,vol:.12}); },

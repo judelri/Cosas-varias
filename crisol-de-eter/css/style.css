@@ -34,6 +34,10 @@ h3{color:var(--brass);font-size:1.1rem}
 .lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:var(--flux)}
 .bar{position:relative;height:8px;border-radius:4px;background:var(--panel2);overflow:hidden}
 .bar>i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#7d3d8a,var(--flux));transition:width .4s}
+.bossbar{left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(360px,46vw);text-align:center;text-shadow:0 1px 3px #000}
+.bossbar b{display:block;font-family:var(--f-pixel);font-weight:500;font-size:.95rem;color:#ffd0a8;margin-bottom:3px}
+.bossbar .bar{height:9px;border:1px solid #000a}.bossbar .bar>i{background:linear-gradient(90deg,#c8501c,#e8833a);transition:width .25s}
+body.touch .bossbar{top:auto;bottom:calc(270px + env(safe-area-inset-bottom,0px));width:60vw}
 .visrow{margin-top:4px}.visrow .lbl{color:#59d0d6}.visrow .bar>i{background:linear-gradient(90deg,#2e7a8a,#59d0d6)}
 .chip.vis{color:#9fe8ee;border-color:#2e7a8a}
 .focus{left:50%;bottom:calc(98px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#17141cc0;border:1px solid #2e7a8a;border-radius:8px;padding:3px 10px;font-size:.78rem;display:flex;gap:6px;align-items:center;color:#cfeff2}
@@ -95,7 +99,7 @@ body.touch .vitals img{width:14px;height:14px}
 .snew span{display:inline-flex;gap:4px;align-items:center}
 .pk img{vertical-align:middle}
 @keyframes pop{from{transform:translateX(-50%) scale(.94);opacity:0}}
-.picks{left:50%;top:calc(64px + env(safe-area-inset-top,0px));transform:translateX(-50%);display:flex;flex-direction:column;gap:4px;align-items:center}
+.picks{left:50%;top:calc(70px + env(safe-area-inset-top,0px));transform:translateX(-50%);display:flex;flex-direction:column;gap:4px;align-items:center}
 .pk{background:#17141cd0;border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:.85rem;animation:fade 2.6s forwards}
 .pk.f{border-color:var(--flux);color:#f0b6dc}.pk.g{border-color:#4d7a38;color:#c6e8b2}
 @keyframes fade{0%,75%{opacity:1}100%{opacity:0}}

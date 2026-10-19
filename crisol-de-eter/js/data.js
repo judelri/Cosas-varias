@@ -42,6 +42,7 @@ const ITEMS = {
   foco_excava:{n:"Foco de excavación",ab:"Fe",e:{roca:3,orden:2},crafted:1,focus:{cost:3,n:"Excavación"},d:"Rompe bloques lejanos como un pico de hierro. 3 de vis."},
   foco_luz:{n:"Foco de luz",ab:"Fl",e:{luz:3,cefiro:2},crafted:1,focus:{cost:5,n:"Luz"},d:"Deja un orbe de luz donde apuntas. 5 de vis."},
   gafas:{n:"Gafas de revelación",ab:"Ga",e:{orden:2,luz:2,metal:1},crafted:1,d:"Muestran las esencias de lo que miras."},
+  nucleo:{n:"Núcleo naranja",ab:"Nn",e:{energia:5,luz:4,orden:4},crafted:1,d:"Lo suelta la Mascota de Claude. Disuelto en el crisol rinde mucha esencia."},
   pollo:{n:"Pollo crudo",ab:"Po",e:{vida:2},food:2,d:"Lo sueltan las gallinas. Mejor asado en el horno."},
   manzana:{n:"Manzana",ab:"Mz",e:{vida:2,marea:1},food:4,d:"A veces cae de las hojas."},
   polvo:{n:"Polvo de luz",ab:"Pz",e:{luz:3,cefiro:1},d:"Lo sueltan las polillas de luz que salen de noche."},

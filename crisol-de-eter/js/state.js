@@ -84,6 +84,8 @@ const ICONC={}, ICON={};
   C.pollo=leg("#e8a0a0"); C.pollo_asado=leg("#c8783c");
   C.pan=mk((x,y)=>((x-8)/6.6)**2+((y-9.5)/3.8)**2<1,(x,y)=>(Math.abs(x-6)<.6||Math.abs(x-10)<.6)&&y<9?"#8a5a2a":sh("#d6a050",1.2-(y-6)/14));
   C.manzana=mk((x,y)=>((x-8)/5.2)**2+((y-10)/4.8)**2<1||(x>=8&&x<9&&y>2&&y<6),(x,y)=> y<6 ? "#5e4127" : (x-6)**2+(y-8)**2<2.2 ? "#ffb0a0" : sh("#c8202c",1.15-(y-5)/16));
+  C.nucleo=mk((x,y)=>(y>=4&&y<11&&x>=2&&x<14)||(y>=6&&y<9&&(x<2||x>=14)&&x>=0&&x<16)||(y>=11&&y<14&&[3,5,10,12].includes(Math.floor(x))),
+    (x,y)=> (y>=6&&y<9&&(Math.floor(x)===5||Math.floor(x)===10)) ? "#1a1418" : sh("#e8833a",1.15-(y-4)/16));
   C.ceniza=dust("#6d6178","#b4a2c4"); C.sal=dust("#e9e6df","#ffffff"); C.polvo=dust("#e8c85a","#fff6c0");
   C.agua=drop("#4f8ad6");
   C.ambar=mk((x,y)=>((x-8)/5)**2+((y-8.5)/5.6)**2<1,(x,y)=>(x-6.5)**2+(y-6.5)**2<2?"#fff1b8":sh("#e8a33a",1.15-(y-3)/16));
