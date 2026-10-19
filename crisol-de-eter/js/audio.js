@@ -25,7 +25,7 @@ function noise(dur,o={}){
   env(g,t,o.vol||.2,o.att||.003,dur); s.connect(f).connect(g).connect(master); s.start(t,Math.random()*.5); s.stop(t+dur+.05);
 }
 // timbre de cada material (filtro del ruido, resonancia, golpe tonal)
-const MAT={roca:{f:1700,q:2.2,k:180},tierra:{f:420,q:.9},arena:{f:2600,q:.5},madera:{f:650,q:3,k:240},hoja:{f:4200,q:.7},agua:{f:700,q:.6}};
+const MAT={cristal:{f:3600,q:8,k:1250},roca:{f:1700,q:2.2,k:180},tierra:{f:420,q:.9},arena:{f:2600,q:.5},madera:{f:650,q:3,k:240},hoja:{f:4200,q:.7},agua:{f:700,q:.6}};
 const mat = id => MAT[(B[id]&&B[id].m)||"roca"];
 const SFX={
   hit(id){ const m=mat(id); noise(.07,{f:m.f*(.9+Math.random()*.2),q:m.q,vol:.14}); if(m.k) tone(m.k*(.9+Math.random()*.2),.05,{type:"triangle",vol:.05}); },

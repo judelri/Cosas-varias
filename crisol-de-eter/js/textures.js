@@ -2,7 +2,7 @@
 // Script clásico (sin módulos): comparte el ámbito global con los demás archivos de js/.
 
 /* ================= Atlas de texturas ================= */
-const TILES=["grass_top","grass_side","dirt","stone","sand","water","log_side","log_top","leaves","planks","ore_iron","ore_coal","ore_quartz","ore_spark","obsidian","ash","corrupt_top","corrupt_side","bookshelf","bricks","altar","metal","tallgrass","flower_red","flower_yellow"];
+const TILES=["grass_top","grass_side","dirt","stone","sand","water","log_side","log_top","leaves","planks","ore_iron","ore_coal","ore_quartz","ore_spark","obsidian","ash","corrupt_top","corrupt_side","bookshelf","bricks","altar","metal","tallgrass","flower_red","flower_yellow","torch","crystal","craft_top","craft_side","furnace_front","furnace_top"];
 const TI={}; TILES.forEach((t,i)=>TI[t]=i); const NT=TILES.length;
 const atlas=document.createElement("canvas"); atlas.width=16*NT; atlas.height=16;
 const g=atlas.getContext("2d");
@@ -46,6 +46,18 @@ for(let y=8;y<16;y++) px("flower_red",7,y,"#3f7a26"); px("flower_red",6,11,"#4a8
 for(let y=3;y<8;y++) for(let x=5;x<10;x++) if(!((x===5||x===9)&&(y===3||y===7))) px("flower_red",x,y,pk(["#c8202c","#b01824","#d8303a"])); px("flower_red",7,5,"#2a1a10");
 for(let y=8;y<16;y++) px("flower_yellow",8,y,"#3f7a26"); px("flower_yellow",7,12,"#4a8c30"); px("flower_yellow",9,10,"#4a8c30");
 for(let y=4;y<8;y++) for(let x=6;x<11;x++) if(!((x===6||x===10)&&(y===4||y===7))) px("flower_yellow",x,y,pk(["#f2d33a","#e6c22a","#f7e060"]));
+// antorcha: palo con llama
+for(let y=6;y<16;y++){ px("torch",7,y,y%3?"#7a5634":"#5e4127"); px("torch",8,y,y%4?"#8a6440":"#6b4a2b"); }
+for(const [x,y,c] of [[7,3,"#f2b13c"],[8,3,"#f2b13c"],[7,4,"#fff2a0"],[8,4,"#ffd860"],[7,5,"#f2b13c"],[8,5,"#e0743c"],[6,4,"#e0743c"],[9,4,"#e0743c"],[7,2,"#e0743c"],[8,6,"#f2b13c"]]) px("torch",x,y,c);
+// cristal en gris (se tiñe con el color de la esencia al mallar)
+for(const [cx,top,w] of [[4,7,2],[8,2,3],[12,6,2]]) for(let y=top;y<16;y++) for(let x=cx-w;x<=cx+w;x++){ const taper=Math.max(0,w-Math.floor((y-top)/1.5)); if(Math.abs(x-cx)>w-taper) continue; px("crystal",x,y, x<cx?"#f4f4f4":x===cx?"#ffffff":"#b8b8b8"); }
+// mesa de trabajo: tablones con cuadrícula arriba y herramientas a los lados
+pal("craft_top",["#a1834f","#b08f5a","#9b7c4a"]); for(let i=0;i<16;i++){ px("craft_top",i,0,"#6b5330"); px("craft_top",i,15,"#6b5330"); px("craft_top",0,i,"#6b5330"); px("craft_top",15,i,"#6b5330"); }
+for(let i=2;i<14;i++) for(const k of [2,6,10,13]){ px("craft_top",i,k,"#5e4127"); px("craft_top",k,i,"#5e4127"); }
+for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const row=Math.floor(y/4), seam=(y%4===3)||((x+row*5)%16===0); px("craft_side",x,y, seam?"#6b5330":pk(["#a1834f","#b08f5a","#9b7c4a"])); }
+for(let y=4;y<11;y++) px("craft_side",4,y,"#5e4127"); for(let x=2;x<7;x++) px("craft_side",x,4,"#8d8d98"); for(let y=4;y<12;y++) px("craft_side",11,y,"#5e4127"); px("craft_side",10,4,"#c9c9d2"); px("craft_side",12,4,"#c9c9d2"); px("craft_side",11,3,"#c9c9d2");
+// horno: piedra con boca encendida
+stone("furnace_top"); stone("furnace_front"); for(let y=8;y<14;y++) for(let x=4;x<12;x++) px("furnace_front",x,y, y<10?"#1a1418":pk(["#e0743c","#f2b13c","#c8501c"])); for(let x=3;x<13;x++){ px("furnace_front",x,7,"#5a5a5a"); px("furnace_front",x,14,"#5a5a5a"); }
 function tileTex(name){ const c=document.createElement("canvas"); c.width=c.height=16; c.getContext("2d").drawImage(atlas,TI[name]*16,0,16,16,0,0,16,16); const t=new THREE.CanvasTexture(c); t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter; return t; }
 
 /* ================= Bloques ================= */
@@ -54,17 +66,17 @@ const B = [
   null,
   {n:"Hierba",bl:2,m:"tierra",t:["grass_top","grass_side","dirt"],drop:[["semilla",.5]],hard:.5,resp:1,c:"#5f9e3f"},
   {n:"Tierra",bl:2,m:"tierra",t:["dirt"],hard:.5,c:"#7a5634"},
-  {n:"Roca",bl:3,m:"roca",t:["stone"],drop:[["piedra",1]],hard:1.1,c:"#7f7d82"},
+  {n:"Roca",tier:1,bl:3,m:"roca",t:["stone"],drop:[["piedra",1]],hard:1.1,c:"#7f7d82"},
   {n:"Arena",bl:4,m:"arena",t:["sand"],hard:.5,c:"#d9c98f"},
   {n:"Agua",m:"agua",t:["water"],water:1,c:"#3f72c0"},
   {n:"Tronco",bl:6,m:"madera",t:["log_top","log_side","log_top"],drop:[["ambar",.4]],hard:1,resp:1,c:"#6b4a2b"},
   {n:"Hojas",bl:7,m:"hoja",t:["leaves"],leaves:1,drop:[["pluma",.4],["semilla",.2]],hard:.25,resp:1,c:"#3e7a2c"},
   {n:"Tablones del taller",m:"madera",t:["planks"],unbreak:1,c:"#a8824f"},
-  {n:"Mena de hierro",bl:3,m:"roca",t:["ore_iron"],drop:[["hierro",1]],hard:1.6,resp:1,c:"#d9a77a"},
-  {n:"Veta de carbón",bl:3,m:"roca",t:["ore_coal"],drop:[["carbon",1]],hard:1.3,resp:1,c:"#333"},
-  {n:"Veta de cuarzo",bl:3,m:"roca",t:["ore_quartz"],drop:[["cuarzo",1]],hard:1.5,resp:1,c:"#f4f0e6"},
-  {n:"Piedra chispa",bl:3,m:"roca",t:["ore_spark"],drop:[["chispa",1]],hard:1.6,resp:1,c:"#59d0d6"},
-  {n:"Obsidiana",bl:13,m:"roca",t:["obsidian"],drop:[["obsidiana",1]],hard:2.4,resp:1,flux:1,c:"#3a2650"},
+  {n:"Mena de hierro",tier:2,bl:3,m:"roca",t:["ore_iron"],drop:[["hierro",1]],hard:1.6,resp:1,c:"#d9a77a"},
+  {n:"Veta de carbón",tier:1,bl:3,m:"roca",t:["ore_coal"],drop:[["carbon",1]],hard:1.3,resp:1,c:"#333"},
+  {n:"Veta de cuarzo",tier:2,bl:3,m:"roca",t:["ore_quartz"],drop:[["cuarzo",1]],hard:1.5,resp:1,c:"#f4f0e6"},
+  {n:"Piedra chispa",tier:2,bl:3,m:"roca",t:["ore_spark"],drop:[["chispa",1]],hard:1.6,resp:1,c:"#59d0d6"},
+  {n:"Obsidiana",tier:3,bl:13,m:"roca",t:["obsidian"],drop:[["obsidiana",1]],hard:2.4,resp:1,flux:1,c:"#3a2650"},
   {n:"Ceniza de grieta",m:"arena",t:["ash"],drop:[["ceniza",1]],hard:.7,resp:1,flux:2,c:"#8a7898"},
   {n:"Suelo corrupto",bl:2,m:"tierra",t:["corrupt_top","corrupt_side","dirt"],drop:[["corrupta",.25]],hard:.8,resp:1,flux:1,c:"#7a4590"},
   {n:"Estantería",m:"madera",t:["planks","bookshelf","planks"],unbreak:1,use:"investigar",c:"#a8824f"},
@@ -74,14 +86,22 @@ const B = [
   {n:"Ladrillo del taller",m:"roca",t:["bricks"],unbreak:1,c:"#8e867b"},
   {n:"Hierba alta",m:"hoja",t:["tallgrass"],plant:1,drop:[["semilla",.35]],hard:.05,resp:1,c:"#5d9b3a"},
   {n:"Amapola",m:"hoja",t:["flower_red"],plant:1,drop:[["semilla",.5]],hard:.05,resp:1,c:"#c8202c"},
-  {n:"Diente de león",m:"hoja",t:["flower_yellow"],plant:1,drop:[["pluma",.5]],hard:.05,resp:1,c:"#f2d33a"}
+  {n:"Diente de león",m:"hoja",t:["flower_yellow"],plant:1,drop:[["pluma",.5]],hard:.05,resp:1,c:"#f2d33a"},
+  {n:"Tablones",bl:24,m:"madera",t:["planks"],hard:.8,c:"#a8824f"},
+  {n:"Antorcha",bl:25,m:"madera",t:["torch"],plant:1,torch:1,light:14,hard:.05,c:"#f2b13c"},
+  ...PRIMAL.map(e=>({n:"Cúmulo de cristal de "+ESS[e].n,m:"cristal",t:["crystal"],plant:1,tint:ESS[e].c,light:7,tier:1,drop:[["cr_"+e,1],["cr_"+e,.5]],hard:.9,resp:1,c:ESS[e].c})),
+  {n:"Mesa de trabajo",m:"madera",t:["craft_top","craft_side","planks"],unbreak:1,use:"mesa",c:"#a8824f"},
+  {n:"Horno",m:"roca",t:["furnace_top","furnace_front","furnace_top"],unbreak:1,use:"horno",light:0,c:"#7f7d82"}
 ];
+// light: luz que da el bloque (0-15) · tier: pico mínimo para que suelte algo (1 madera, 2 piedra, 3 hierro)
+const CRYSTAL0=26, TORCH=25;
 
 /* iconos isométricos de los bloques que se pueden poner (32×32) */
 const BICON={};
 for(const id of new Set(B.filter(b=>b&&b.bl).map(b=>b.bl))){
   const t=B[id].t, top=TI[t[0]], side=TI[t.length===1?t[0]:t[1]];
   const c=document.createElement("canvas"); c.width=c.height=32; const x=c.getContext("2d"); x.imageSmoothingEnabled=false;
+  if(B[id].plant){ x.drawImage(atlas,top*16,0,16,16,0,0,32,32); BICON[id]=c.toDataURL(); continue; }
   const face=(tile,m,dark)=>{ x.setTransform(...m); x.drawImage(atlas,tile*16,0,16,16,0,0,16,16); x.fillStyle=`rgba(0,0,0,${dark})`; x.fillRect(0,0,16,16); };
   face(top,[15/16,7.5/16,-15/16,7.5/16,16,1],0); face(side,[15/16,7.5/16,0,15/16,1,8.5],.25); face(side,[15/16,-7.5/16,0,15/16,16,16],.42);
   BICON[id]=c.toDataURL();

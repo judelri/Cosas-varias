@@ -51,7 +51,7 @@ function cellChanged(x,y,z,id,dirty){
   world[ix(x,y,z)]=id; chunksOf(x,z,dirty);
   if(Math.hypot(x+.5-P.x,y-P.y,z+.5-P.z)<18){ if(id===0&&old>0){ burst(x,y,z,B[old].c||"#888"); sfx("break",old); } else if(id>0) sfx("place",id); }
 }
-function flushChunks(dirty){ for(const k of dirty){ const [cx,cz]=k.split(",").map(Number); buildChunk(cx,cz); } }
+function flushChunks(dirty){ if(dirty.size) relight(dirty); for(const k of dirty){ const [cx,cz]=k.split(",").map(Number); buildChunk(cx,cz); } }
 function afterRemote(){ hud(); if(panel&&panel!=="equipo") NET.panelDirty=true; }
 
 /* conexión */

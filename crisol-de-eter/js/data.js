@@ -19,6 +19,7 @@ const ESS = {
   vacio:{n:"Vacío",c:"#7476a8",s:"ring",from:["cefiro","caos"]}
 };
 const ESS_ORDER = Object.keys(ESS);
+const PRIMAL = ESS_ORDER.filter(e=>!ESS[e].from);
 const ITEMS = {
   agua:{n:"Agua de manantial",ab:"Ag",e:{marea:4}}, piedra:{n:"Piedra",ab:"Pi",e:{roca:4}},
   semilla:{n:"Semilla",ab:"Se",e:{vida:3,roca:1}}, pluma:{n:"Pluma",ab:"Pl",e:{cefiro:3,vida:1}},
@@ -28,6 +29,7 @@ const ITEMS = {
   ceniza:{n:"Ceniza de grieta",ab:"Cg",e:{caos:3,vacio:1}},
   corrupta:{n:"Masa corrupta",ab:"Mc",e:{caos:4,vacio:2},d:"Lo que deja el flux. Rica en Caos y Vacío."},
   polvo:{n:"Polvo de luz",ab:"Pz",e:{luz:3,cefiro:1},d:"Lo sueltan las polillas de luz que salen de noche."},
+  ...Object.fromEntries(["marea","brasa","roca","cefiro","orden","caos"].map(e=>["cr_"+e,{n:"Cristal de "+ESS[e].n,ab:"C"+e[0],e:{[e]:2},crystal:1,d:"Vis cristalizada. Crece en las cuevas y lo sueltan los fuegos fatuos; se usa en la mesa arcana."}])),
   sal:{n:"Sal purificadora",ab:"Sa",e:{orden:2,marea:1},crafted:1,d:"Úsala desde la mochila: −25 flux."},
   tiza:{n:"Tiza arcana",ab:"Ti",e:{orden:2,roca:1},crafted:1,d:"Traza los círculos del altar."},
   laton:{n:"Latón arcano",ab:"La",e:{metal:3,orden:2},crafted:1,d:"Metal que conduce esencia."},

@@ -11,7 +11,7 @@ function vnoise(x,z){ const xi=Math.floor(x),zi=Math.floor(z),xf=x-xi,zf=z-zi,s=
 let wseed=4242; const wr=()=>{ wseed=(wseed*16807)%2147483647; return wseed/2147483647; };
 const wri=n=>Math.floor(wr()*n);
 const LAB={x:24,z:24,y:7};
-const CRUC=[21,8,24], ALT=[27,8,24], PEDS=[[29,8,24],[25,8,24],[27,8,22],[27,8,26]], RIFT=[40,40];
+const CRUC=[21,8,24], ALT=[27,8,24], PEDS=[[29,8,24],[25,8,24],[27,8,22],[27,8,26]], RIFT=[40,40], MESA=[21,8,20], HORNO=[27,8,20];
 const heights=[];
 function genWorld(){
   for(let x=0;x<W;x++) for(let z=0;z<D;z++){
@@ -65,6 +65,39 @@ function genWorld(){
   for(const [cx,cz] of [[-5,-5],[5,-5],[-5,5],[5,5]]) for(let y=LAB.y+1;y<=LAB.y+3;y++) world[ix(LAB.x+cx,y,LAB.z+cz)]=20;
   for(let x=LAB.x-1;x<=LAB.x+1;x++) for(let y=LAB.y+1;y<=LAB.y+2;y++) world[ix(x,y,LAB.z-5)]=16;
   world[ix(...CRUC)]=17; world[ix(...ALT)]=18; PEDS.forEach(p=>world[ix(...p)]=19);
+  world[ix(...MESA)]=32; world[ix(...HORNO)]=33;
+  for(const [cx,cz] of [[-5,-5],[5,-5],[-5,5],[5,5]]) world[ix(LAB.x+cx,LAB.y+4,LAB.z+cz)]=TORCH; // antorchas sobre los pilares
+  carveCaves();
+}
+// cuevas en la montaña: gusanos que excavan túneles; en sus paredes hay más menas y en el suelo, cúmulos de cristal.
+// Usa su propio azar (cr) para no cambiar el resto del mundo, que se genera igual que siempre.
+function carveCaves(){
+  let cs=777; const cr=()=>{ cs=(cs*16807)%2147483647; return cs/2147483647; };
+  const air=[];
+  for(let w=0;w<7;w++){
+    let x=31+cr()*14, z=2+cr()*16, y=3+cr()*8, a=cr()*6.28, b=(cr()-.5)*.6;
+    if(w===0){ x=33; z=12; y=heights[33+12*W]-1; b=-.45; } // una entrada en la ladera
+    for(let s=0;s<38;s++){
+      const r=1.3+cr()*.6;
+      for(let dx=-2;dx<=2;dx++) for(let dy=-2;dy<=2;dy++) for(let dz=-2;dz<=2;dz++){
+        const cx=Math.floor(x+dx), cy=Math.floor(y+dy), cz=Math.floor(z+dz);
+        if(cx<1||cz<1||cx>=W-1||cz>=D-1||cy<1||cy>=H-2||dx*dx+dy*dy*1.4+dz*dz>r*r) continue;
+        if(Math.max(Math.abs(cx-LAB.x),Math.abs(cz-LAB.z))<=10||cx<17) continue; // lejos del taller y del río
+        const id=world[ix(cx,cy,cz)]; if(id===2||id===3||(id>=9&&id<=12)){ world[ix(cx,cy,cz)]=0; air.push(ix(cx,cy,cz)); }
+      }
+      a+=(cr()-.5)*.9; b=Math.max(-.5,Math.min(.4,b+(cr()-.5)*.3));
+      x+=Math.cos(a); z+=Math.sin(a); y+=b; y=Math.max(2,Math.min(heights[Math.floor(x)+Math.floor(z)*W]||12,y));
+      if(x<18||x>W-2||z<1||z>D-2) break;
+    }
+  }
+  for(const i of air){
+    if(world[i]!==0) continue;
+    const x=i%W, z=Math.floor(i/W)%D, y=Math.floor(i/(W*D));
+    // menas en las paredes de roca
+    for(const [dx,dy,dz] of [[1,0,0],[-1,0,0],[0,0,1],[0,0,-1],[0,1,0]]){ const j=ix(x+dx,y+dy,z+dz); if(world[j]===3&&cr()<.09){ const r=cr(); world[j]=r<.3?10:r<.6?9:r<.85?11:12; } }
+    // cristales en el suelo
+    if(y>1&&world[ix(x,y-1,z)]===3&&cr()<.05) world[i]=CRYSTAL0+Math.floor(cr()*6);
+  }
 }
 // mundo base (siempre el mismo) + los cambios guardados en S.world
 function loadWorld(){ world.fill(0); wseed=4242; genWorld(); for(const [k,id] of Object.entries(S.world)){ const [x,y,z]=k.split(",").map(Number); if(getB(x,y,z)>=0) world[ix(x,y,z)]=id; } }

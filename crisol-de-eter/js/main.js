@@ -83,8 +83,11 @@ function frame(now){
   const sw=swing>0?strike(swing):0;
   bobA+=(moveAmt-bobA)*Math.min(1,dt*8);
   armG.visible=!panel;
+  { const L=brightAt(P.x,P.y+EYE,P.z); worldMats.forEach(w=>w.m.color.copy(w.c).multiplyScalar(L)); } // la mano se ve con la luz del lugar
   armG.rotation.set(ARM_BASE.rx-sw*.6,ARM_BASE.ry+sw*.3,0);
   const sh=ARM_BASE.sh; armG.position.set(ARM_BASE.x-sh.x+Math.cos(walkPh)*.015*bobA,ARM_BASE.y-sh.y+Math.abs(Math.sin(walkPh))*.03*bobA-sw*.02,ARM_BASE.z-sh.z-sw*.14);
+  // chispas de las antorchas cercanas
+  for(const i of LIGHTS){ if(world[i]!==TORCH||Math.random()>dt*3) continue; const x=i%W, z=Math.floor(i/W)%D, y=Math.floor(i/(W*D)); if(Math.abs(x-P.x)<16&&Math.abs(z-P.z)<16) spawn(x+.5+(Math.random()-.5)*.1,y+.82,z+.5+(Math.random()-.5)*.1,0,.5,0,h2a(Math.random()<.5?"#f2b13c":"#e0743c"),.5); }
   if(Math.random()<(daylight<.3?.95:.5)) spawn(RIFT[0]+(Math.random()-.5)*12,4+Math.random()*2,RIFT[1]+(Math.random()-.5)*12,0,.5+Math.random()*.6,0,h2a(Math.random()<.5?"#9a62b0":"#7476a8"),3);
   if(S.flux>=50 && Math.random()<S.flux/150) spawn(P.x+(Math.random()-.5)*14,P.y+Math.random()*4,P.z+(Math.random()-.5)*14,0,.2,0,h2a("#c4579f"),2.5);
   if(sum(S.cru)&&Math.random()<.25){ const c=mixRGB(); spawn(CRUC[0]+.3+Math.random()*.4,liquid.position.y+CRUC[1]+.05,CRUC[2]+.3+Math.random()*.4,0,.5,0,c,.8); }

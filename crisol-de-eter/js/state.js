@@ -61,6 +61,7 @@ const ICONC={}, ICON={};
   C.piedra=lump("#8a8890"); C.carbon=lump("#3a3640","#15121a",.7); C.hierro=lump("#8a8890","#e0a878",.7);
   C.obsidiana=lump("#2a1d3a","#8a5ab8",.86); C.corrupta=lump("#6a3a80","#2a1638",.75);
   C.cuarzo=crystal("#ece7da"); C.chispa=crystal("#59d0d6");
+  for(const e of PRIMAL) C["cr_"+e]=crystal(ESS[e].c);
   C.ceniza=dust("#6d6178","#b4a2c4"); C.sal=dust("#e9e6df","#ffffff"); C.polvo=dust("#e8c85a","#fff6c0");
   C.agua=drop("#4f8ad6");
   C.ambar=mk((x,y)=>((x-8)/5)**2+((y-8.5)/5.6)**2<1,(x,y)=>(x-6.5)**2+(y-6.5)**2<2?"#fff1b8":sh("#e8a33a",1.15-(y-3)/16));

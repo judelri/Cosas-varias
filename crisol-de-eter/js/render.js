@@ -42,12 +42,12 @@ const cloudTex=new THREE.CanvasTexture(cloudC); cloudTex.magFilter=cloudTex.minF
 const clouds=new THREE.Mesh(new THREE.PlaneGeometry(480,480),new THREE.MeshBasicMaterial({map:cloudTex,transparent:true,opacity:.82,fog:false,depthWrite:false,side:THREE.DoubleSide}));
 clouds.rotation.x=-Math.PI/2; clouds.position.set(24,40,24); scene.add(clouds);
 
-/* materiales y mallado con luz suave (oclusión ambiental) */
+/* materiales y mallado con luz suave: oclusión ambiental × luz de cielo y de bloques (js/light.js) por vértice */
 const atex=new THREE.CanvasTexture(atlas); atex.magFilter=THREE.NearestFilter; atex.minFilter=THREE.NearestFilter;
-const solidMat=new THREE.MeshBasicMaterial({map:atex,vertexColors:true,alphaTest:.5});
-const plantMat=new THREE.MeshBasicMaterial({map:atex,vertexColors:true,alphaTest:.5,side:THREE.DoubleSide});
-const waterMat=new THREE.MeshBasicMaterial({map:atex,vertexColors:true,transparent:true,opacity:.74,depthWrite:false});
-const worldMats=[solidMat,plantMat,waterMat].map(m=>({m,c:m.color.clone()})); // se oscurecen de noche
+const solidMat=litMaterial(new THREE.MeshBasicMaterial({map:atex,vertexColors:true,alphaTest:.5}));
+const plantMat=litMaterial(new THREE.MeshBasicMaterial({map:atex,vertexColors:true,alphaTest:.5,side:THREE.DoubleSide}));
+const waterMat=litMaterial(new THREE.MeshBasicMaterial({map:atex,vertexColors:true,transparent:true,opacity:.74,depthWrite:false}));
+const worldMats=[]; // materiales del brazo: se oscurecen con la luz donde estás (main.js)
 const FACES=[
   {d:[-1,0,0],sh:.6,c:[[0,1,0,0,1],[0,0,0,0,0],[0,1,1,1,1],[0,0,1,1,0]]},
   {d:[1,0,0],sh:.6,c:[[1,1,1,0,1],[1,0,1,0,0],[1,1,0,1,1],[1,0,0,1,0]]},
@@ -58,16 +58,21 @@ const FACES=[
 ];
 const AOC=[.42,.62,.8,1];
 const isOpaque=id=>id>0&&!B[id].water&&!B[id].plant&&!B[id].custom&&!B[id].leaves;
-function vao(x,y,z,f,c){
+// oclusión ambiental y luz suave de un vértice: mira las celdas que tocan esa esquina por fuera de la cara;
+// la luz es el promedio de las que no son opacas (como la iluminación suave de Minecraft)
+function vert(x,y,z,f,c){
   const d=f.d, a=d[0]?0:d[1]?1:2, t=[0,1,2].filter(i=>i!==a), o1=[0,0,0], o2=[0,0,0];
   o1[t[0]]=c[t[0]]?1:-1; o2[t[1]]=c[t[1]]?1:-1;
   const bx=x+d[0],by=y+d[1],bz=z+d[2];
-  const s1=isOpaque(getB(bx+o1[0],by+o1[1],bz+o1[2]))?1:0, s2=isOpaque(getB(bx+o2[0],by+o2[1],bz+o2[2]))?1:0;
-  const cr=isOpaque(getB(bx+o1[0]+o2[0],by+o1[1]+o2[1],bz+o1[2]+o2[2]))?1:0;
-  return s1&&s2?0:3-(s1+s2+cr);
+  const c1=[bx+o1[0],by+o1[1],bz+o1[2]], c2=[bx+o2[0],by+o2[1],bz+o2[2]], c3=[bx+o1[0]+o2[0],by+o1[1]+o2[1],bz+o1[2]+o2[2]];
+  const s1=isOpaque(getB(...c1)), s2=isOpaque(getB(...c2)), s3=isOpaque(getB(...c3));
+  let sk=0, bl=0, n=0; const add=p=>{ const l=lightAt(...p); sk+=l[0]; bl+=l[1]; n++; };
+  add([bx,by,bz]); if(!s1) add(c1); if(!s2) add(c2); if(!s3&&!(s1&&s2)) add(c3);
+  return [s1&&s2?0:3-((s1?1:0)+(s2?1:0)+(s3?1:0)), sk/n/15, bl/n/15];
 }
 const CH=16, chunks={};
-function geo(a){ const gm=new THREE.BufferGeometry(); gm.setAttribute("position",new THREE.Float32BufferAttribute(a[0],3)); gm.setAttribute("uv",new THREE.Float32BufferAttribute(a[2],2)); gm.setAttribute("color",new THREE.Float32BufferAttribute(a[3],3)); gm.setIndex(a[4]); return gm; }
+// a: [posiciones, luz (cielo, bloques), uv, color, índices]
+function geo(a){ const gm=new THREE.BufferGeometry(); gm.setAttribute("position",new THREE.Float32BufferAttribute(a[0],3)); gm.setAttribute("light",new THREE.Float32BufferAttribute(a[1],2)); gm.setAttribute("uv",new THREE.Float32BufferAttribute(a[2],2)); gm.setAttribute("color",new THREE.Float32BufferAttribute(a[3],3)); gm.setIndex(a[4]); return gm; }
 const uvOf=(tile,u,v)=>[(tile+.002+u*.996)/NT,.002+v*.996];
 function buildChunk(cx,cz){
   const s=[[],[],[],[],[]], w=[[],[],[],[],[]], p=[[],[],[],[],[]];
@@ -75,12 +80,13 @@ function buildChunk(cx,cz){
     const id=world[ix(x,y,z)]; if(!id||B[id].custom) continue;
     const bd=B[id];
     if(bd.plant){
-      const tile=TI[bd.t[0]], j=(hash(x*7+y,z*13)-.5)*.3;
+      // cruz de dos planos; las antorchas van centradas y los cristales se tiñen con el color de su esencia
+      const tile=TI[bd.t[0]], j=bd.torch?0:(hash(x*7+y,z*13)-.5)*.3, tc=bd.tint?h2a(bd.tint).map(v=>.35+v*.75):[.92,.92,.92], [ls,lb]=lightAt(x,y,z);
       for(const [ax,az,bx,bz] of [[.15,.15,.85,.85],[.15,.85,.85,.15]]){
         const base=p[0].length/3;
         p[0].push(x+ax+j,y,z+az+j, x+bx+j,y,z+bz+j, x+ax+j,y+1,z+az+j, x+bx+j,y+1,z+bz+j);
         p[2].push(...uvOf(tile,0,0),...uvOf(tile,1,0),...uvOf(tile,0,1),...uvOf(tile,1,1));
-        for(let k=0;k<4;k++) p[3].push(.92,.92,.92);
+        for(let k=0;k<4;k++){ p[3].push(...tc); p[1].push(ls/15,bd.light?1:lb/15); }
         p[4].push(base,base+1,base+2,base+2,base+1,base+3);
       }
       continue;
@@ -92,10 +98,11 @@ function buildChunk(cx,cz){
       else if(n!==-1 && isOpaque(n)) continue;
       const t=bd.t, tile=TI[t.length===1?t[0]:f.d[1]===1?t[0]:f.d[1]===-1?t[2]:t[1]];
       const a=isW?w:s, base=a[0].length/3, ao=[];
+      const wl=isW&&lightAt(x+f.d[0],y+f.d[1],z+f.d[2]);
       for(const c of f.c){
         let yy=y+c[1]; if(isW&&c[1]===1&&getB(x,y+1,z)!==5) yy-=.12;
         a[0].push(x+c[0],yy,z+c[2]); a[2].push(...uvOf(tile,c[3],c[4]));
-        const o=isW?3:vao(x,y,z,f,c); ao.push(o); const b=f.sh*AOC[o]; a[3].push(b,b,b);
+        const v=isW?[3,wl[0]/15,wl[1]/15]:vert(x,y,z,f,c), o=v[0]; ao.push(o); const b=f.sh*AOC[o]; a[3].push(b,b,b); a[1].push(v[1],v[2]);
       }
       if(ao[0]+ao[3]>ao[1]+ao[2]) a[4].push(base,base+1,base+2,base+2,base+1,base+3);
       else a[4].push(base,base+1,base+3,base,base+3,base+2);
@@ -106,7 +113,7 @@ function buildChunk(cx,cz){
   const ms=new THREE.Mesh(geo(s),solidMat), mw=new THREE.Mesh(geo(w),waterMat), mp=new THREE.Mesh(geo(p),plantMat); mw.renderOrder=1;
   scene.add(ms,mw,mp); chunks[key]={s:ms,w:mw,p:mp};
 }
-function buildAll(){ for(let cx=0;cx<W/CH;cx++) for(let cz=0;cz<D/CH;cz++) buildChunk(cx,cz); }
+function buildAll(){ computeLight(); for(let cx=0;cx<W/CH;cx++) for(let cz=0;cz<D/CH;cz++) buildChunk(cx,cz); }
 buildAll();
 // chunks a rehacer al cambiar una celda (el suyo y el vecino si la celda está en el borde)
 function chunksOf(x,z,set){
@@ -117,7 +124,8 @@ function chunksOf(x,z,set){
 }
 function setBlock(x,y,z,id){
   world[ix(x,y,z)]=id; S.world[`${x},${y},${z}`]=id;
-  for(const k of chunksOf(x,z,new Set())){ const [cx,cz]=k.split(",").map(Number); buildChunk(cx,cz); }
+  const dirty=chunksOf(x,z,new Set()); relight(dirty);
+  for(const k of dirty){ const [cx,cz]=k.split(",").map(Number); buildChunk(cx,cz); }
 }
 
 /* objetos del taller */
@@ -224,7 +232,7 @@ function updateSky(){
   if(key===skyKey) return; skyKey=key;
   const top=NIGHT_TOP.clone().lerp(SKY_TOP,daylight).lerp(FLUX_TOP,f), hor=NIGHT_HOR.clone().lerp(SKY_HOR,daylight).lerp(DUSK,dusk*.55).lerp(FLUX_HOR,f);
   paintSky(top,hor);
-  const L=.3+.7*daylight; worldMats.forEach(w=>w.m.color.copy(w.c).multiplyScalar(L));
+  uSky.value=.18+.82*daylight; // la luz del cielo en el terreno (sombreador de light.js)
   ambL.intensity=.22+.4*daylight; sunL.intensity=.55*daylight; sunL.position.copy(sunDir);
   clouds.material.opacity=.82*(.3+.7*daylight); clouds.material.color.setScalar(.35+.65*daylight);
   stars.material.opacity=Math.max(0,1-daylight*1.6); sunHalo.material.opacity=.22+.25*dusk;
