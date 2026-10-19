@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crisol de Éter 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Alegreya+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@500&family=Pixelify+Sans:wght@500&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<canvas id="c" aria-label="Mundo del Crisol de Éter"></canvas>
+<div class="hud topl">
+  <div class="fluxrow"><span class="lbl">Flux</span><div class="bar"><i id="fluxbar"></i></div><span id="fluxval" class="mono"></span></div>
+  <div class="fstate" id="fstate"></div>
+  <div class="goal" id="goal"></div>
+</div>
+<div class="hud topr"><button class="hbtn" data-open="mochila">Mochila</button><button class="hbtn" data-open="grimorio">Grimorio</button></div>
+<div class="hud cross"></div>
+<div class="hud tgt"><b id="tgtName"></b><span id="tgtHint"></span><div class="mine" id="mineWrap" hidden><i id="mineBar"></i></div></div>
+<div class="hud hotbar" id="hotbar"></div>
+<div class="hud picks" id="picks"></div>
+<div class="hud lockhint" id="lockhint" hidden>Haz clic en el mundo para seguir jugando</div>
+<div class="hud joy" id="joy"><div class="knob" id="knob"></div></div>
+<div class="hud btns">
+  <button class="tb" id="bScan">Escanear</button><button class="tb" id="bUse">Usar</button>
+  <button class="tb" id="bJump">Saltar</button><button class="tb big" id="bMine">Picar</button>
+</div>
+<div class="flash" id="flash"></div>
+<div class="ov" id="panel" hidden><div class="pin"><button class="x" data-act="closep" aria-label="Cerrar">×</button><div id="pbody"></div></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/world.js"></script>
+<script src="js/render.js"></script>
+<script src="js/player.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
