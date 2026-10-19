@@ -11,8 +11,8 @@ function hud(){
   updateCauldron();
 }
 function openPanel(name){ panel=name; if(document.pointerLockElement) document.exitPointerLock?.(); mining=false; renderPanel(); $("panel").hidden=false; }
-function closePanel(){ panel=null; $("panel").hidden=true; resetAsk=false; }
-let resetAsk=false;
+function closePanel(){ panel=null; $("panel").hidden=true; resetAsk=false; $("lockhint").hidden=locked||isTouch; }
+let resetAsk=false, resetting=false;
 function invRows(mode){
   const ids=Object.keys(ITEMS).filter(has);
   if(!ids.length) return `<p class="hint">Mochila vacía. Pica bloques del mundo: roca, menas, troncos, hojas… y recoge agua del río con «Usar».</p>`;
@@ -54,7 +54,7 @@ function renderPanel(){
     const K=known();
     h=`<h2>Grimorio</h2>
     <h3>Controles</h3>${isTouch?`<div class="keys"><kbd>Joystick</kbd><span>Moverte (salta solo al chocar con un bloque)</span><kbd>Arrastrar</kbd><span>Mirar alrededor</span><kbd>Picar</kbd><span>Mantén para romper el bloque al que apuntas</span><kbd>Usar</kbd><span>Abrir crisol, altar o estantería; recoger agua</span><kbd>Escanear</kbd><span>Aprender las esencias del bloque</span></div>`
-      :`<div class="keys"><kbd>Clic</kbd><span>Capturar el ratón</span><kbd>WASD</kbd><span>Moverte</span><kbd>Espacio</kbd><span>Saltar o nadar</span><kbd>Clic izq.</kbd><span>Mantén para picar</span><kbd>Clic der. / E</kbd><span>Usar: crisol, altar, estantería, agua</span><kbd>F</kbd><span>Escanear el bloque apuntado</span><kbd>I</kbd><span>Mochila</span><kbd>G</kbd><span>Grimorio</span></div>`}
+      :`<div class="keys"><kbd>Clic</kbd><span>Capturar el ratón</span><kbd>WASD</kbd><span>Moverte</span><kbd>Espacio</kbd><span>Saltar o nadar</span><kbd>Clic izq.</kbd><span>Mantén para picar</span><kbd>Clic der. / E</kbd><span>Usar: crisol, altar, estantería, agua</span><kbd>F</kbd><span>Escanear el bloque apuntado</span><kbd>I</kbd><span>Mochila</span><kbd>G</kbd><span>Grimorio</span><kbd>Esc / E</kbd><span>Cerrar el panel</span></div>`}
     <h3>El mundo</h3><ul class="rules"><li>Taller (centro): crisol a la izquierda, altar con 4 pedestales a la derecha, estantería al fondo.</li><li>Río (oeste): agua y arena.</li><li>Bosque (sur): troncos con ámbar, hojas con plumas y semillas.</li><li>Montaña (noreste): hierro, carbón, cuarzo y piedra chispa.</li><li>Grieta (sureste): ceniza, obsidiana y suelo corrupto. Picar ahí sube el flux.</li><li>Los recursos vuelven a aparecer al minuto.</li></ul>
     <h3>Esencias <span class="mono" style="font-size:.85rem;color:var(--muted)">${K.size}/${ESS_ORDER.length}</span></h3>
     <div class="egrid">${ESS_ORDER.map(e=>{ const E=ESS[e],k=K.has(e); const sub=!k?"Sin descubrir":E.from?(E.from.every(x=>K.has(x))?`${ESS[E.from[0]].n} + ${ESS[E.from[1]].n}`:"Compuesta"):"Primal · "+E.d; return `<div class="ess${k?"":" unk"}">${k?sig(e,24):`<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="#3b3346" stroke-dasharray="2 3"/></svg>`}<div><strong>${k?E.n:"???"}</strong><small>${sub}</small></div></div>`; }).join("")}</div>
@@ -76,7 +76,7 @@ $("panel").addEventListener("click",ev=>{
   if(a==="scan") scanItems([id]); else if(a==="dis") dissolve(id); else if(a==="cat") catalyze(id);
   else if(a==="sal") useSal(); else if(a==="empty") emptyCru(); else if(a==="inf") return infuse(id);
   else if(a==="reset1") resetAsk=true; else if(a==="reset0") resetAsk=false;
-  else if(a==="reset2"){ S=fresh(); save(); location.reload(); return; }
+  else if(a==="reset2"){ resetting=true; S=fresh(); save(); location.reload(); return; }
   hud(); save(); if(panel) renderPanel();
 });
 document.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>openPanel(b.dataset.open)));
@@ -99,8 +99,7 @@ document.addEventListener("mousemove",e=>{ if(!locked) return; P.yaw-=e.movement
 document.addEventListener("mouseup",e=>{ if(e.button===0) mining=false; });
 document.addEventListener("keydown",e=>{
   const k=e.key.toLowerCase();
-  if(k==="escape"&&panel){ closePanel(); return; }
-  if(panel) return;
+  if(panel){ if(!e.repeat&&(k==="escape"||k==="e"||(k==="i"&&panel==="mochila")||(k==="g"&&panel==="grimorio"))) closePanel(); return; }
   keys[k]=true;
   if(k==="e") doUse(); else if(k==="f") doScan(); else if(k==="i") openPanel("mochila"); else if(k==="g") openPanel("grimorio"); else if(k==="q") mining=true;
   if([" ","arrowup","arrowdown"].includes(k)) e.preventDefault();

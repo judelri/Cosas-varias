@@ -79,6 +79,7 @@ function infuse(rid){
     setTimeout(step,700);
   };
   const finish=(ok,why)=>{
+    if(ok && !Object.entries(infNeeds(r)).every(([i,n])=>has(i)>=n)){ ok=false; why="Faltaron objetos al final"; }
     if(ok && !Object.entries(r.cost).every(([e,n])=>(S.cru[e]||0)>=n)){ ok=false; why="Faltó esencia al final"; }
     if(ok){
       for(const [i,n] of Object.entries(infNeeds(r))) take(i,n);

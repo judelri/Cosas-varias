@@ -31,6 +31,7 @@ python3 tools/build.py   # → dist/crisol-de-eter.html
 | Clic derecho / E | Usar | Crisol, altar, estantería, recoger agua |
 | F | Escanear | Ver esencias del bloque |
 | I / G | Mochila / Grimorio | Paneles |
+| Esc / E (o la misma I / G) | × del panel | Cerrar el panel |
 
 ## Estructura
 

@@ -6,6 +6,7 @@ const KEY = "crisol-eter-3d-v1";
 const fresh = () => ({inv:{},scanned:[],cru:{},flux:5,world:{},resp:[],mined:0,rifts:0,won:false,player:null});
 let S = fresh();
 try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(fresh(), JSON.parse(raw)); } catch(e) {}
+for (const k of Object.keys(S.inv)) if (!(S.inv[k]>0)) delete S.inv[k];
 if (window.claude?.hot?.data?.S) S = window.claude.hot.data.S;
 window.claude?.hot?.snapshot?.(() => ({S}));
 let saveT = 0; const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} };
@@ -14,7 +15,7 @@ const $ = id => document.getElementById(id);
 const sum = o => Object.values(o).reduce((a,b)=>a+b,0);
 const rnd = n => Math.floor(Math.random()*n);
 const has = id => (S.inv[id]||0);
-const take = (id,n=1) => { S.inv[id]-=n; if(S.inv[id]<=0) delete S.inv[id]; };
+const take = (id,n=1) => { S.inv[id]=(S.inv[id]||0)-n; if(!(S.inv[id]>0)) delete S.inv[id]; };
 const give = (id,n=1) => { S.inv[id]=(S.inv[id]||0)+n; };
 const h2a = h => [parseInt(h.slice(1,3),16)/255, parseInt(h.slice(3,5),16)/255, parseInt(h.slice(5,7),16)/255];
 function sig(id,size=15){ const s=ESS[id]; return `<svg class="sig" viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true"><path d="${PATHS[s.s]}" fill="none" stroke="${s.c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }

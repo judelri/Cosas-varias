@@ -5,6 +5,8 @@
 function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); ARM_BASE.x=Math.min(.42,.58*Math.tan(35*Math.PI/180)*camera.aspect*.62); ARM_BASE.y=camera.aspect<1?-.27:-.4; armG.scale.setScalar(camera.aspect<1?.55:1); }
 addEventListener("resize",resize); resize();
 let last=performance.now(), tick1=0, tick30=0, savet=0;
+function persist(){ if(resetting) return; S.player={x:P.x,y:P.y,z:P.z,yaw:P.yaw,pitch:P.pitch}; save(); }
+addEventListener("pagehide",persist); document.addEventListener("visibilitychange",()=>{ if(document.hidden) persist(); });
 function frame(now){
   const dt=Math.min(.05,(now-last)/1000); last=now;
   if(!panel){
@@ -16,7 +18,7 @@ function frame(now){
     const inW=getB(Math.floor(P.x),Math.floor(P.y+.4),Math.floor(P.z))===5;
     const sp=inW?2.6:4.4, sy=Math.sin(P.yaw), cy=Math.cos(P.yaw);
     const vx=(-sy*f+cy*s)*sp, vz=(-cy*f-sy*s)*sp;
-    P.vy-=(inW?9:24)*dt; if(inW) P.vy=Math.max(P.vy,-2.5);
+    P.vy-=(inW?9:24)*dt; P.vy=Math.max(P.vy,inW?-2.5:-20);
     const jump=keys[" "]||jumpBtn;
     if(jump){ if(P.ground) P.vy=7.6; else if(inW) P.vy=3.2; }
     let bumped=false;
@@ -24,7 +26,7 @@ function frame(now){
     const nz=P.z+vz*dt; if(!collides(P.x,P.y,nz)) P.z=nz; else bumped=true;
     if(bumped && P.ground && m>.2 && !collides(P.x+vx*.12,P.y+1.05,P.z+vz*.12)) P.vy=7.6;
     const ny=P.y+P.vy*dt;
-    if(collides(P.x,ny,P.z)){ if(P.vy<0) P.ground=true; P.vy=0; } else { P.y=ny; P.ground=false; }
+    if(collides(P.x,ny,P.z)){ if(P.vy<0){ P.ground=true; const top=Math.floor(ny)+1; if(top<P.y&&!collides(P.x,top,P.z)) P.y=top; } P.vy=0; } else { P.y=ny; P.ground=false; }
     if(P.y<-6){ P.x=24.5;P.y=9;P.z=27.5;P.vy=0; }
   }
   P.pitch=Math.max(-1.55,Math.min(1.55,P.pitch));
@@ -51,9 +53,9 @@ function frame(now){
   tick1+=dt; tick30+=dt; savet+=dt;
   if(tick1>1){ tick1=0; const now2=Date.now();
     S.resp=S.resp.filter(r=>{ if(now2<r.t) return true; const [x,y,z]=r.k.split(",").map(Number); if(getB(x,y,z)!==0) return false;
-      if(Math.floor(P.x)===x&&Math.floor(P.z)===z&&y>=Math.floor(P.y)-0&&y<=Math.floor(P.y+HT)) return true; setBlock(x,y,z,r.id); return false; }); }
+      if(x>=Math.floor(P.x-RAD)&&x<=Math.floor(P.x+RAD)&&z>=Math.floor(P.z-RAD)&&z<=Math.floor(P.z+RAD)&&y>=Math.floor(P.y)&&y<=Math.floor(P.y+HT)) return true; setBlock(x,y,z,r.id); return false; }); }
   if(tick30>30){ tick30=0; if(S.flux>=50 && Math.random()<.35){ const raws=Object.keys(S.inv).filter(i=>!ITEMS[i].crafted&&i!=="corrupta"); if(raws.length){ const v=raws[rnd(raws.length)]; take(v); give("corrupta"); pick(`La bruma corrompió: ${ITEMS[v].n}`,"f"); hud(); } } }
-  if(savet>5){ savet=0; S.player={x:P.x,y:P.y,z:P.z,yaw:P.yaw,pitch:P.pitch}; save(); }
+  if(savet>5){ savet=0; persist(); }
 
   // ambiente
   const fl=Math.round(Math.min(1,S.flux/100)*75)/100; if(fl!==skyFlux){ skyFlux=fl; paintSky(fl); }
