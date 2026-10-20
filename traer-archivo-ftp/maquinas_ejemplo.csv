@@ -1,0 +1,4 @@
+Nombre;Protocolo;Host;Puerto;Usuario;Contrasena
+LGV01;ftp;192.168.10.101;21;operador;clave1
+LGV02;ftp;192.168.10.102;21;operador;
+LGV03;sftp;192.168.10.103;22;root;clave3
