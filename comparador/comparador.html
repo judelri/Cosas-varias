@@ -2680,6 +2680,12 @@ document.addEventListener('keydown',function(e){
 });
 pintarItems();
 activar(tabInicio);
+/* En la aplicación de escritorio (Comparador.exe) la ventana pregunta antes de cerrar si hay cambios sin guardar */
+window.__pedirCierre=async function(){
+  var s=tabs.filter(function(t){return t.sucio&&t.sucio();});
+  if(s.length&&!await ask(plural(s.length,'comparación tiene','comparaciones tienen')+' cambios sin guardar. ¿Salir igualmente y perderlos?','Salir sin guardar'))return;
+  if(window.cerrarVentana)window.cerrarVentana();
+};
 window.Comparador={items:function(){return items;},tabs:function(){return tabs;},activa:function(){return tabAct;},activar:activar,
   abrirArchivos:abrirArchivos,abrirCarpetas:abrirCarpetas,abrirValores:abrirValores,ejemploArchivos:ejemploArchivos,ejemploCarpetas:ejemploCarpetas,extraer:extraer};
 })();

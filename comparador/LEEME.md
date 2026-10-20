@@ -6,6 +6,21 @@ Pliega el código como Notepad++ y saca los valores `<palabra>valor</palabra>` d
 línea de todos los archivos a una tabla tipo Excel. No hace falta instalar nada: se abre con doble clic en Chrome, Edge o Firefox
 y funciona sin internet.
 
+## Aplicación para Windows (Comparador.exe)
+
+`Comparador.exe` es la misma herramienta como programa de Windows: un solo archivo de unos 3 MB,
+sin instalar nada. Se abre en su propia ventana (maximizada, con su icono en la barra de tareas) y
+funciona sin internet.
+
+- Usa WebView2, el motor de Microsoft Edge que ya viene con Windows 10 y 11. Si un equipo no lo
+  tuviera, el programa avisa y ofrece instalarlo o abrir el comparador en el navegador.
+- Las opciones, la última carpeta usada y demás se guardan en `%LOCALAPPDATA%\Comparador`.
+- Si hay cambios sin guardar, al cerrar la ventana pregunta antes de salir.
+- Para volver a generarlo después de cambiar `comparador.html`: `sh compilar.sh` (hace falta Go).
+  El código del programa está en `main.go`; el icono y la versión, en `winres/`.
+
+`comparador.html` sigue funcionando igual con doble clic en Chrome, Edge o Firefox.
+
 ## Cómo se usa
 
 1. En **Inicio**, añade archivos o carpetas (botones o arrastrándolos a la ventana). El primero
