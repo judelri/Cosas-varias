@@ -10,6 +10,10 @@ y funciona sin internet.
 
 1. En **Inicio**, añade archivos o carpetas (botones o arrastrándolos a la ventana). El primero
    es la base (A) contra la que se marcan las diferencias; se puede cambiar después.
+   - **Varias carpetas**: eliges la carpeta que las contiene y marcas sus subcarpetas (vienen todas
+     marcadas). También se pueden arrastrar varias carpetas juntas a la ventana.
+   - Los botones para elegir archivos o carpetas se abren en **la última carpeta usada**, también al
+     volver a abrir la página otro día (Chrome y Edge; Firefox recuerda la suya).
 2. **Comparar** (Ctrl+Intro). Cada comparación se abre en su pestaña, como en WinMerge.
 3. **Ejemplo** carga tres versiones de un archivo de código o tres carpetas para probarlo.
 
@@ -64,7 +68,8 @@ los de una comparación de carpetas, los paneles abiertos o directamente los ele
 - En amarillo los valores de un mismo archivo que cambian entre carpetas o paneles, y las líneas que
   traen otra etiqueta. Si la línea no tiene el formato, se muestra tal cual en gris.
 - Abajo, el resumen: cuántos valores, cuántos distintos y, si son números, suma, promedio, mínimo y máximo.
-- **Copiar para Excel** (se pega con Ctrl+V) o **Exportar CSV**.
+- **Copiar para Excel** copia **solo los valores**, uno debajo de otro y sin huecos (sin títulos, nombres
+  de archivo ni ubicación), listos para pegar con Ctrl+V. **Exportar CSV** guarda la tabla completa.
 
 ## Opciones de comparación
 

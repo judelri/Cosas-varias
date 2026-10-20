@@ -282,6 +282,7 @@ dialog .fld{margin-bottom:12px}
       <div class="grp">
         <button class="btn" id="btnArch" title="Añadir uno o varios archivos (Ctrl+O)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 1.5H4a1 1 0 00-1 1v11a1 1 0 001 1h8a1 1 0 001-1V5.5z"/><path d="M9 1.5v4h4"/></svg>Añadir archivos</button>
         <button class="btn" id="btnCarp" title="Añadir una carpeta (repite para añadir más)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 4.5v8h13v-7h-6L7 4H1.5z"/></svg>Añadir carpeta</button>
+        <button class="btn" id="btnVarias" title="Elegir una carpeta y marcar varias de sus subcarpetas para añadirlas de una vez"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.5 3.5V2.5h4l1 1h6v7h-1"/><path d="M1.5 5.5v8h11v-7h-5l-1-1z"/></svg>Varias carpetas</button>
         <button class="btn" id="btnTexto" title="Pegar un texto para compararlo"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5.5 2.5h-2v12h9v-12h-2"/><path d="M5.5 1.5h5v2h-5zM5.5 7h5M5.5 9.5h5M5.5 12h3"/></svg>Pegar texto</button>
       </div>
       <span class="vsep"></span>
@@ -331,6 +332,14 @@ dialog .fld{margin-bottom:12px}
 <div class="menu" id="menu" hidden role="menu"></div>
 <input type="file" id="inFiles" multiple hidden>
 <input type="file" id="inDir" webkitdirectory hidden>
+<input type="file" id="inDirV" webkitdirectory hidden>
+<dialog id="dlgSubs">
+  <h2 id="subTit">Elegir carpetas</h2>
+  <p class="sub" style="margin-bottom:12px">Marca las subcarpetas que quieres comparar. Cada una será una columna (A, B, C…).</p>
+  <div class="row" style="justify-content:flex-start;margin-bottom:10px"><button class="btn" id="subTodas" style="height:28px">Todas</button><button class="btn" id="subNinguna" style="height:28px">Ninguna</button></div>
+  <div id="subLista" style="display:grid;gap:6px;max-height:50vh;overflow:auto;margin-bottom:16px"></div>
+  <div class="row"><button class="btn" id="subNo">Cancelar</button><button class="btn prim" id="subOk">Añadir</button></div>
+</dialog>
 <script>
 /* ==========================================================================
    Núcleo sin pantalla: leer y escribir texto, diferencias entre N archivos,
@@ -985,9 +994,9 @@ function pintarItems(){
     box.appendChild(d);
   });
   var dr=document.createElement('div');dr.className='drop';
-  dr.innerHTML='<b>'+(items.length?'Añade más o arrastra aquí':'Arrastra aquí archivos o carpetas')+'</b><span>Se pueden comparar muchos a la vez: 2, 5, 10 archivos o carpetas, cada uno en su panel.</span>'+
-    '<div class="row"><button class="btn" data-a="arch">Añadir archivos</button><button class="btn" data-a="carp">Añadir carpeta</button></div>';
-  dr.onclick=function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.a==='arch')elegirArchivos();else elegirCarpeta();};
+  dr.innerHTML='<b>'+(items.length?'Añade más o arrastra aquí':'Arrastra aquí archivos o carpetas')+'</b><span>Se pueden comparar muchos a la vez: 2, 5, 10 archivos o carpetas, cada uno en su panel. Puedes arrastrar varias carpetas juntas o usar «Varias carpetas».</span>'+
+    '<div class="row"><button class="btn" data-a="arch">Añadir archivos</button><button class="btn" data-a="carp">Añadir carpeta</button><button class="btn" data-a="varias">Varias carpetas</button></div>';
+  dr.onclick=function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.a==='arch')elegirArchivos();else if(b.dataset.a==='varias')elegirVarias();else elegirCarpeta();};
   box.appendChild(dr);
   var nA=items.filter(function(x){return x.tipo!=='carpeta';}).length,nC=items.length-nA;
   $('itemsCnt').textContent=items.length?'· '+(nC&&nA?'mezcla de archivos y carpetas':nC?plural(nC,'carpeta','carpetas'):plural(nA,'archivo','archivos')):'';
@@ -997,10 +1006,30 @@ function pintarItems(){
   if(tabAct===tabInicio)cabecera();
 }
 function agregar(it){items.push(it);pintarItems();}
+/* ---------- Los selectores se abren en la última carpeta usada (se recuerda entre sesiones) ---------- */
+var ULT=null;
+function almacen(modo,fn){
+  return new Promise(function(res){
+    try{
+      var r=indexedDB.open('comparador',1);
+      r.onupgradeneeded=function(){r.result.createObjectStore('kv');};
+      r.onsuccess=function(){try{var q=fn(r.result.transaction('kv',modo).objectStore('kv'));q.onsuccess=function(){res(q.result);};q.onerror=function(){res(null);};}catch(e){res(null);}};
+      r.onerror=function(){res(null);};
+    }catch(e){res(null);}
+  });
+}
+almacen('readonly',function(st){return st.get('ultimo');}).then(function(h){if(h&&!ULT)ULT=h;});
+function recordarUlt(h){if(!h)return;ULT=h;almacen('readwrite',function(st){return st.put(h,'ultimo');});}
+async function selector(fn,o){
+  var op=Object.assign({id:'comparador'},o);if(ULT)op.startIn=ULT;
+  try{return await fn(op);}
+  catch(e){if(e.name==='AbortError'||!op.startIn)throw e;delete op.startIn;return await fn(op);}
+}
 async function elegirArchivos(){
   if(window.showOpenFilePicker){
     try{
-      var hs=await showOpenFilePicker({multiple:true});
+      var hs=await selector(showOpenFilePicker,{multiple:true});
+      recordarUlt(hs[0]);
       for(var i=0;i<hs.length;i++){var f=await hs[i].getFile();items.push({tipo:'archivo',nombre:f.name,file:f,fh:hs[i]});}
       pintarItems();
     }catch(e){if(e.name!=='AbortError')$('inFiles').click();}
@@ -1008,10 +1037,51 @@ async function elegirArchivos(){
 }
 async function elegirCarpeta(){
   if(window.showDirectoryPicker){
-    try{var dh=await showDirectoryPicker();agregar({tipo:'carpeta',nombre:dh.name,dh:dh});}
+    try{var dh=await selector(showDirectoryPicker,{});recordarUlt(dh);agregar({tipo:'carpeta',nombre:dh.name,dh:dh});}
     catch(e){if(e.name!=='AbortError')$('inDir').click();}
   }else $('inDir').click();
 }
+/* Varias carpetas a la vez: se elige la carpeta que las contiene y se marcan las subcarpetas */
+async function elegirVarias(){
+  if(!window.showDirectoryPicker){$('inDirV').click();return;}
+  var dh;
+  try{dh=await selector(showDirectoryPicker,{});}catch(e){if(e.name!=='AbortError')$('inDirV').click();return;}
+  recordarUlt(dh);
+  var subs=[],excl=NU.filtro(OPC.excluir);
+  try{for await(var par of dh.entries())if(par[1].kind==='directory'&&!(excl&&excl(par[0])))subs.push({tipo:'carpeta',nombre:par[0],ruta:dh.name,dh:par[1]});}
+  catch(e){toast('No se pudo leer «'+dh.name+'»: '+(e.message||e.name),true);return;}
+  marcarSubs(dh.name,subs,{tipo:'carpeta',nombre:dh.name,dh:dh});
+}
+function marcarSubs(padre,subs,entera){
+  if(!subs.length){toast('«'+padre+'» no tiene subcarpetas: se añade ella misma.');agregar(entera);return;}
+  subs.sort(function(a,b){return a.nombre.localeCompare(b.nombre,'es',{numeric:true,sensitivity:'base'});});
+  var d=$('dlgSubs'),L=$('subLista');
+  $('subTit').textContent='Subcarpetas de «'+padre+'»';
+  L.innerHTML=subs.map(function(x,i){return'<label class="chk"><input type="checkbox" value="'+i+'" checked>'+esc(x.nombre)+(x.lista?' <span class="sub">'+plural(x.lista.length,'archivo','archivos')+'</span>':'')+'</label>';}).join('');
+  $('subTodas').onclick=function(){L.querySelectorAll('input').forEach(function(i){i.checked=true;});};
+  $('subNinguna').onclick=function(){L.querySelectorAll('input').forEach(function(i){i.checked=false;});};
+  $('subNo').onclick=function(){d.close();};
+  $('subOk').onclick=function(){
+    d.close();
+    var n=0;L.querySelectorAll('input:checked').forEach(function(i){items.push(subs[+i.value]);n++;});
+    pintarItems();if(n)toast(plural(n,'carpeta añadida','carpetas añadidas')+'.');
+  };
+  try{d.showModal();}catch(e){}
+}
+$('btnVarias').onclick=elegirVarias;
+$('inDirV').onchange=function(){
+  var padre='',subs=new Map(),excl=NU.filtro(OPC.excluir);
+  Array.prototype.forEach.call(this.files,function(f){
+    var p=(f.webkitRelativePath||f.name).split('/');padre=p[0];
+    if(p.length<3||(excl&&excl(p[1])))return;
+    if(!subs.has(p[1]))subs.set(p[1],{tipo:'carpeta',nombre:p[1],ruta:padre,lista:[]});
+    subs.get(p[1]).lista.push({rel:p.slice(2).join('/'),file:f});
+  });
+  var todos=Array.prototype.map.call(this.files,function(f){var p=(f.webkitRelativePath||f.name).split('/');p.shift();return{rel:p.join('/'),file:f};});
+  this.value='';
+  if(!padre){toast('La carpeta está vacía o el navegador no dejó leerla.',true);return;}
+  marcarSubs(padre,Array.from(subs.values()),{tipo:'carpeta',nombre:padre,lista:todos});
+};
 $('btnArch').onclick=elegirArchivos;
 $('btnCarp').onclick=elegirCarpeta;
 $('inFiles').onchange=function(){
@@ -1071,6 +1141,7 @@ document.addEventListener('drop',function(e){
     for(var i=0;i<res.length;i++){
       var r=res[i];
       if(r.h){
+        recordarUlt(r.h);
         if(r.h.kind==='directory')items.push({tipo:'carpeta',nombre:r.h.name,dh:r.h});
         else{var f=await r.h.getFile();items.push({tipo:'archivo',nombre:f.name,file:f,fh:r.h});}
       }else if(r.en)items.push({tipo:'carpeta',nombre:r.en.name,en:r.en});
@@ -2285,7 +2356,7 @@ function VistaValores(fuentesV,origen,ini){
         '<label class="chk" style="align-items:center"><input type="checkbox" data-c="sin">Incluir archivos sin la palabra</label>'+
       '</div>'+
       '<div class="grp" style="margin-left:auto">'+
-        '<button class="btn" data-c="copiar" title="Copiar la tabla para pegarla en Excel (Ctrl+C sin celda elegida)">Copiar para Excel</button>'+
+        '<button class="btn" data-c="copiar" title="Copiar solo los valores, uno debajo de otro y sin huecos, para pegarlos en Excel (Ctrl+C sin celda elegida)">Copiar para Excel</button>'+
         '<button class="btn" data-c="csv" title="Descargar la tabla en CSV">Exportar CSV</button>'+
       '</div>'+
     '</div>'+
@@ -2423,9 +2494,18 @@ function VistaValores(fuentesV,origen,ini){
   }
   function tabla(){return[cab.slice()].concat(filasV.map(function(r){return[r.f.clave?r.f.ruta:r.f.nombre,r.f.donde||''].concat(r.v.map(function(v){return v==null?'':v;}));}));}
   function tsv(){return tabla().map(function(r){return r.map(function(v){v=String(v);return/[\t\n\r"]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join('\t');}).join('\r\n');}
+  /* Para Excel solo van los valores: sin títulos, nombre de archivo ni ubicación, una fila por archivo en el mismo orden */
+  function soloValores(){
+    return filasV.map(function(r){return r.v.map(function(v,c){return v==null||(r.raw&&r.raw[c])?'':v;});});
+  }
+  /* las filas sin ningún valor no se copian, para no pegar huecos en Excel */
+  function filasConValor(){return soloValores().filter(function(r){return r.some(function(v){return v!=='';});});}
   function copiarTodo(){
     if(!filasV.length){toast('Primero extrae algún valor.');return;}
-    navigator.clipboard.writeText(tsv()).then(function(){toast('Tabla copiada: pégala en Excel con Ctrl+V.');},function(){toast('El navegador no dejó copiar; usa Exportar CSV.',true);});
+    var fv=filasConValor();
+    if(!fv.length){toast('No hay ningún valor que copiar.');return;}
+    var txt=fv.map(function(r){return r.map(function(v){v=String(v);return/[\t\n\r"]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join('\t');}).join('\r\n');
+    navigator.clipboard.writeText(txt).then(function(){toast(plural(fv.length,'valor copiado','valores copiados')+' (solo los valores): pégalos en Excel con Ctrl+V.');},function(){toast('El navegador no dejó copiar; usa Exportar CSV.',true);});
   }
   el.querySelector('.toolbar').addEventListener('click',function(e){
     var b=e.target.closest('button[data-c]');if(!b)return;
@@ -2449,7 +2529,7 @@ function VistaValores(fuentesV,origen,ini){
   T.teclas=function(e){
     var ctrl=e.ctrlKey||e.metaKey;
     if(ctrl&&e.code==='KeyC'&&document.activeElement!==inP&&!String(getSelection())){
-      if(selC){var r=+selC.dataset.r,c=+selC.dataset.c,tb=tabla(),v=tb[r]&&tb[r][c]!=null?tb[r][c]:selC.textContent;navigator.clipboard.writeText(String(v)).then(function(){toast('Celda copiada.');});}
+      if(selC){var r=+selC.dataset.r,c=+selC.dataset.c,sv=soloValores(),v=r>0&&c>1?(sv[r-1]?sv[r-1][c-2]:''):tabla()[r]?tabla()[r][c]:selC.textContent;navigator.clipboard.writeText(String(v)).then(function(){toast('Celda copiada.');});}
       else copiarTodo();
       return true;
     }
