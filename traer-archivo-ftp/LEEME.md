@@ -1,50 +1,57 @@
 # Traer el mismo archivo de varias máquinas
 
-Hace de una sola vez lo que a mano es abrir FileZilla, conectarse a cada máquina y bajar el mismo
-archivo: usa los sitios que ya están guardados en el **Gestor de sitios de FileZilla** (servidor,
-puerto, usuario y contraseña) y trae el archivo de todas. No hace falta instalar nada para FTP:
-se abre con doble clic en `Traer archivo.bat`.
+Una ventana parecida a la conexión rápida de FileZilla: se escriben las IP de las máquinas, el usuario,
+la contraseña y la ruta del archivo, y trae ese archivo de todas una tras otra. Cada copia se guarda
+numerada en el orden de las IP. No hace falta instalar nada para FTP: se abre con doble clic en
+`Traer archivo.bat`.
 
 ## Cómo se usa
 
-1. Abrir `traer_archivo.ps1` con el Bloc de notas y cambiar, al principio:
-   - `$Archivo`: la ruta del archivo en las máquinas, tal como se ve en FileZilla
-     (p. ej. `'/log/alarmas.txt'`). Para varios: `@('/log/alarmas.txt','/cfg/parametros.ini')`.
-   - `$Carpeta`: si en el Gestor de sitios las máquinas están dentro de una carpeta
-     (p. ej. `'LGV'`), solo se usan esas. Vacío = todos los sitios.
-   - `$Sitios`: filtrar por nombre, con comodines (p. ej. `'LGV*'`).
-2. Doble clic en `Traer archivo.bat`.
+1. Doble clic en `Traer archivo.bat`.
+2. Rellenar:
+   - **Servidores (IP)**: separadas por coma o una por línea. Para IP seguidas se escribe un rango:
+     `192.168.1.101-120` (de la .101 a la .120) o `10.0.0.250-10.0.1.5`. Se respeta el orden en que
+     se escriben; un rango al revés (`120-101`) va de mayor a menor.
+   - **Protocolo** y **Puerto** (21 para FTP, 22 para SFTP), **Usuario** y **Contraseña**, como en FileZilla.
+     Sin usuario se entra como anónimo.
+   - **Archivo remoto**: la ruta tal como se ve en FileZilla, p. ej. `/log/alarmas.txt`.
+     Para varios archivos, separarlos con coma.
+   - **Guardar en**: la carpeta de este PC.
+3. **Traer archivos**.
 
-Cada copia se guarda como `<sitio>_<archivo>` (p. ej. `LGV01_alarmas.txt`, `LGV02_alarmas.txt`) en
-`descargas\<fecha_hora>\`, y la carpeta se abre al terminar. En pantalla y en `resumen.csv`
-(se abre con Excel) queda qué máquina respondió y por qué falló cada una que no:
-apagada o fuera de la red, contraseña incorrecta, o archivo inexistente.
-
-También se puede llamar desde la consola sin tocar el script:
+Las copias quedan en `<Guardar en>\<fecha_hora>\` con el número de orden y la IP delante:
 
 ```
-powershell -ExecutionPolicy Bypass -File traer_archivo.ps1 -Archivo /log/alarmas.txt -Carpeta LGV
+01_192.168.1.101_alarmas.txt
+02_192.168.1.102_alarmas.txt
+03_192.168.1.103_alarmas.txt
 ```
 
-Para que se haga solo (por ejemplo, todos los días a las 7:00), crear una tarea en el
-**Programador de tareas** de Windows que ejecute `Traer archivo.bat`.
+La tabla muestra cada máquina en orden, y `resumen.csv` (se abre con Excel) guarda lo mismo. Si una
+máquina falla dice por qué: no responde (apagada o fuera de la red), usuario o contraseña incorrectos,
+o no existe el archivo. Primero se prueban todas a la vez, así las apagadas no hacen esperar a las demás.
 
-## Sin FileZilla o con contraseña maestra
+La ventana recuerda lo escrito para la próxima vez. La contraseña se guarda cifrada con el usuario de
+Windows en `traer_archivo.config.json`: solo ese usuario, en ese PC, puede leerla.
 
-Si FileZilla protege las contraseñas con contraseña maestra, el script no puede leerlas.
-En ese caso (o para usar otra lista de máquinas) copiar `maquinas_ejemplo.csv`, completarlo con Excel
-(separado por `;`) y llamar con `-Lista maquinas.csv`. Protocolo: `ftp`, `ftpes`, `ftps` o `sftp`.
-Si la contraseña queda vacía, se pregunta al ejecutar. El CSV guarda las contraseñas a la vista:
-no compartirlo.
+## Que se haga solo
+
+Con **-SinVentana** usa lo último que se escribió en la ventana, sin preguntar nada. Para traerlo todos los
+días, crear una tarea en el **Programador de tareas** de Windows con:
+
+- Programa: `powershell`
+- Argumentos: `-ExecutionPolicy Bypass -File "C:\ruta\traer_archivo.ps1" -SinVentana`
+
+Cualquier dato se puede cambiar ahí mismo, p. ej.
+`-SinVentana -Ips 192.168.1.101-120 -Archivo /log/alarmas.txt`.
 
 ## SFTP y FTPS implícito
 
-Windows trae FTP y FTP con TLS explícito, pero no SFTP ni FTPS implícito. Para esos sitios hace falta
+Windows trae FTP y FTP con TLS explícito, pero no SFTP ni FTPS implícito. Para esos hace falta
 [WinSCP](https://winscp.net) (instalado, o la versión portable con `WinSCP.com` copiado junto a este
-script). Conectarse una vez a cada máquina con WinSCP para aceptar su clave; después el script lo usa
-solo.
+script). Conectarse una vez a cada máquina con WinSCP para aceptar su clave; después se usa solo.
 
 ## Límites
 
 - Trae archivos con nombre exacto; no admite comodines (`*.log`) ni carpetas enteras.
-- Las máquinas se recorren de a una; cada una apagada tarda `$Espera` segundos (10) en darse por perdida.
+- Hasta 1024 IP por rango.

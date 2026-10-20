@@ -1,108 +1,132 @@
 ﻿<#
-  Trae el mismo archivo de varias máquinas de una sola vez, usando los sitios que ya están
-  guardados en el Gestor de sitios de FileZilla (o una lista propia en CSV).
-  Cada copia queda como <sitio>_<archivo> en descargas\<fecha_hora>\, junto con resumen.csv.
-  Ver LEEME.md.
+  Trae el mismo archivo de una serie de máquinas, como en FileZilla pero de una vez:
+  se escriben las IP (sueltas o en rangos), el usuario, la contraseña y la ruta del archivo,
+  y cada copia queda numerada en orden en <destino>\<fecha_hora>\, junto con resumen.csv.
+  Sin parámetros abre la ventana; con -SinVentana trabaja en la consola. Ver LEEME.md.
 #>
 param(
-    # Ruta del archivo en cada máquina, tal como se ve en FileZilla. Varios: '/log/a.txt','/log/b.txt'
-    [string[]]$Archivo = @('/log/alarmas.txt'),
+    # Trabajar sin ventana (para el Programador de tareas). Lo que no se indique sale de la última vez en la ventana
+    [switch]$SinVentana,
 
-    # Solo los sitios dentro de esta carpeta del Gestor de sitios ('' = todos)
-    [string]$Carpeta = '',
+    # IP separadas por coma; rangos 192.168.1.101-120 o 192.168.1.250-192.168.2.10
+    [string]$Ips,
 
-    # Solo los sitios cuyo nombre coincida; admite comodines, p. ej. 'LGV*'
-    [string]$Sitios = '*',
+    [string]$Usuario,
+    [string]$Contrasena,
 
-    # Lista propia de máquinas (CSV separado por ;) en lugar de los sitios de FileZilla
-    [string]$Lista = '',
+    [ValidateSet('ftp', 'ftpes', 'ftps', 'sftp')]
+    [string]$Protocolo,
 
-    # Dónde se guardan las copias
-    [string]$Destino = (Join-Path $PSScriptRoot 'descargas'),
+    [int]$Puerto,
+
+    # Ruta del archivo en cada máquina, como se ve en FileZilla. Varios separados por coma
+    [string]$Archivo,
+
+    # Carpeta de este PC donde se guardan las copias
+    [string]$Destino,
 
     # Segundos de espera por máquina antes de darla por apagada
-    [int]$Espera = 10,
-
-    # Abrir la carpeta con las copias al terminar
-    [switch]$AbrirCarpeta,
-
-    [string]$GestorSitios = "$env:APPDATA\FileZilla\sitemanager.xml"
+    [int]$Espera = 10
 )
 
 $ErrorActionPreference = 'Stop'
 # Windows PowerShell 5.1 no siempre ofrece TLS 1.2, que piden los servidores FTP con TLS actuales
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-function Leer-Campo($nodo, $campo) {
-    $n = $nodo.SelectSingleNode($campo)
-    if ($n) { return $n.InnerText.Trim() }
-    return ''
-}
+$rutaConfig = Join-Path $PSScriptRoot 'traer_archivo.config.json'
+$puertosPorDefecto = @{ ftp = 21; ftpes = 21; ftps = 990; sftp = 22 }
 
-function Nueva-Maquina($nombre, $protocolo, $servidor, $puerto, $usuario, $contrasena) {
-    if (-not $puerto -or $puerto -eq '0') {
-        if ($protocolo -eq 'sftp') { $puerto = 22 } elseif ($protocolo -eq 'ftps') { $puerto = 990 } else { $puerto = 21 }
+# La configuración de la última vez; la contraseña va cifrada para el usuario de Windows actual
+function Leer-Config {
+    $cfg = [pscustomobject]@{
+        Ips = ''; Usuario = ''; Contrasena = ''; Protocolo = 'ftp'; Puerto = 21
+        Archivo = '/log/alarmas.txt'; Destino = (Join-Path $PSScriptRoot 'descargas')
     }
-    [pscustomobject]@{
-        Nombre = $nombre; Protocolo = $protocolo; Servidor = $servidor; Puerto = [int]$puerto
-        Usuario = $usuario; Contrasena = $contrasena; Activo = $false; ClavePrivada = ''; Problema = ''
-    }
-}
-
-function Leer-FileZilla {
-    if (-not (Test-Path -LiteralPath $GestorSitios)) {
-        throw "No encuentro el Gestor de sitios de FileZilla en $GestorSitios"
-    }
-    $xml = New-Object System.Xml.XmlDocument
-    $xml.Load($GestorSitios)
-    # Códigos de protocolo de FileZilla: 0 FTP, 6 FTP sin cifrar, 4 FTP con TLS explícito, 3 FTPS implícito, 1 SFTP
-    $protocolos = @{ '0' = 'ftp'; '6' = 'ftp'; '4' = 'ftpes'; '3' = 'ftps'; '1' = 'sftp' }
-
-    foreach ($s in $xml.SelectNodes('//Server')) {
-        $carpetas = @()
-        for ($p = $s.ParentNode; $p -ne $null -and $p.Name -eq 'Folder'; $p = $p.ParentNode) {
-            $texto = $p.SelectSingleNode('text()')
-            if ($texto) { $carpetas += $texto.Value.Trim() }
+    if (Test-Path -LiteralPath $rutaConfig) {
+        $guardada = Get-Content -LiteralPath $rutaConfig -Raw -Encoding UTF8 | ConvertFrom-Json
+        foreach ($campo in 'Ips', 'Usuario', 'Protocolo', 'Puerto', 'Archivo', 'Destino') {
+            if ($null -ne $guardada.$campo -and "$($guardada.$campo)" -ne '') { $cfg.$campo = $guardada.$campo }
         }
-        $servidor = Leer-Campo $s 'Host'
-        $nombre = Leer-Campo $s 'Name'
-        if (-not $nombre) { $nombre = $servidor }
-        if ($Carpeta -and ($carpetas -notcontains $Carpeta)) { continue }
-        if ($nombre -notlike $Sitios) { continue }
-
-        $codigo = Leer-Campo $s 'Protocol'
-        $protocolo = $protocolos[$codigo]
-        $m = Nueva-Maquina $nombre $protocolo $servidor (Leer-Campo $s 'Port') (Leer-Campo $s 'User') $null
-        $m.Activo = (Leer-Campo $s 'PasvMode') -eq 'MODE_ACTIVE'
-        $m.ClavePrivada = Leer-Campo $s 'Keyfile'
-
-        $pass = $s.SelectSingleNode('Pass')
-        if ($pass) {
-            switch ($pass.GetAttribute('encoding')) {
-                'base64' { $m.Contrasena = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($pass.InnerText)) }
-                'crypt'  { $m.Problema = 'FileZilla guarda la contraseña con contraseña maestra; usar una lista CSV (ver LEEME)' }
-                default  { $m.Contrasena = $pass.InnerText }
-            }
+        if ($guardada.ContrasenaCifrada) {
+            try {
+                $segura = ConvertTo-SecureString $guardada.ContrasenaCifrada
+                $cfg.Contrasena = (New-Object System.Net.NetworkCredential('', $segura)).Password
+            } catch { }  # guardada por otro usuario u otro PC: se vuelve a escribir
         }
-        if ((Leer-Campo $s 'Logontype') -eq '0') { $m.Usuario = 'anonymous'; $m.Contrasena = 'anonymous@' }
-        if (-not $protocolo) { $m.Problema = "protocolo de FileZilla no soportado (código $codigo)" }
-        $m
+    }
+    $cfg
+}
+
+function Guardar-Config($cfg) {
+    try {
+        $cifrada = ''
+        if ($cfg.Contrasena) { $cifrada = ConvertTo-SecureString $cfg.Contrasena -AsPlainText -Force | ConvertFrom-SecureString }
+        [pscustomobject]@{
+            Ips = $cfg.Ips; Usuario = $cfg.Usuario; ContrasenaCifrada = $cifrada; Protocolo = $cfg.Protocolo
+            Puerto = $cfg.Puerto; Archivo = $cfg.Archivo; Destino = $cfg.Destino
+        } | ConvertTo-Json | Set-Content -LiteralPath $rutaConfig -Encoding UTF8
+    } catch { }  # si no se puede guardar, la próxima vez se vuelve a escribir
+}
+
+function Ip-ANumero($ip) {
+    $o = $ip.Split('.') | ForEach-Object { [long]$_ }
+    if (@($o | Where-Object { $_ -gt 255 }).Count) { throw "IP no válida: $ip" }
+    return $o[0] * 16777216 + $o[1] * 65536 + $o[2] * 256 + $o[3]
+}
+
+function Numero-AIp([long]$n) {
+    return '{0}.{1}.{2}.{3}' -f [math]::Floor($n / 16777216), ([math]::Floor($n / 65536) % 256), ([math]::Floor($n / 256) % 256), ($n % 256)
+}
+
+# '192.168.1.101-103, 10.0.0.5' -> 192.168.1.101, .102, .103, 10.0.0.5 (en el orden escrito, sin repetir)
+function Expandir-Ips($texto) {
+    $vistas = @{}
+    foreach ($t in ($texto -split '[\s,;]+' | Where-Object { $_ })) {
+        if ($t -match '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.)(\d{1,3})-(\d{1,3})$') {
+            $desde = Ip-ANumero ($matches[1] + $matches[2])
+            $hasta = Ip-ANumero ($matches[1] + $matches[3])
+        } elseif ($t -match '^(\d{1,3}(\.\d{1,3}){3})-(\d{1,3}(\.\d{1,3}){3})$') {
+            $desde = Ip-ANumero $matches[1]
+            $hasta = Ip-ANumero $matches[3]
+        } elseif ($t -match '^\d{1,3}(\.\d{1,3}){3}$') {
+            $desde = Ip-ANumero $t
+            $hasta = $desde
+        } else {
+            if ($t -match '^[\d.]+-[\d.]*$') { throw "Rango no válido: $t (ejemplo: 192.168.1.101-120)" }
+            $desde = $null  # un nombre de equipo
+        }
+        if ($null -eq $desde) { $lista = @($t) }
+        else {
+            if ([math]::Abs($hasta - $desde) -ge 1024) { throw "El rango $t tiene demasiadas IP" }
+            $paso = 1
+            if ($hasta -lt $desde) { $paso = -1 }
+            $lista = for ($n = $desde; $n -ne $hasta + $paso; $n += $paso) { Numero-AIp $n }
+        }
+        foreach ($ip in $lista) {
+            if (-not $vistas.ContainsKey($ip)) { $vistas[$ip] = $true; $ip }
+        }
     }
 }
 
-function Leer-Lista {
-    foreach ($fila in (Import-Csv -LiteralPath $Lista -Delimiter ';' -Encoding UTF8)) {
-        if (-not $fila.Host) { continue }
-        $nombre = $fila.Nombre
-        if (-not $nombre) { $nombre = $fila.Host }
-        if ($nombre -notlike $Sitios) { continue }
-        $protocolo = ('' + $fila.Protocolo).Trim().ToLower()
-        if (-not $protocolo) { $protocolo = 'ftp' }
-        $m = Nueva-Maquina $nombre $protocolo $fila.Host.Trim() $fila.Puerto $fila.Usuario $fila.Contrasena
-        if (-not $m.Contrasena) { $m.Contrasena = $null }
-        if (@('ftp', 'ftpes', 'ftps', 'sftp') -notcontains $protocolo) { $m.Problema = "protocolo desconocido '$protocolo'" }
-        $m
+# Prueba todas las máquinas a la vez, para no esperar una por una a las apagadas
+function Probar-Conexion($ips, $puerto, $alEsperar) {
+    $intentos = foreach ($ip in $ips) {
+        $cliente = New-Object System.Net.Sockets.TcpClient
+        $tarea = $null
+        try { $tarea = $cliente.ConnectAsync($ip, $puerto) } catch { }
+        [pscustomobject]@{ Ip = $ip; Cliente = $cliente; Tarea = $tarea }
     }
+    $limite = (Get-Date).AddSeconds($Espera)
+    while ((Get-Date) -lt $limite -and @($intentos | Where-Object { $_.Tarea -and -not $_.Tarea.IsCompleted }).Count) {
+        Start-Sleep -Milliseconds 100
+        if ($alEsperar) { & $alEsperar }
+    }
+    $responde = @{}
+    foreach ($i in $intentos) {
+        $responde[$i.Ip] = ($i.Tarea -and "$($i.Tarea.Status)" -eq 'RanToCompletion')
+        $i.Cliente.Close()
+    }
+    $responde
 }
 
 function Buscar-WinScp {
@@ -124,7 +148,7 @@ function Bajar-Ftp($m, $remoto, $local) {
     $req.Method = [System.Net.WebRequestMethods+Ftp]::DownloadFile
     $req.Credentials = New-Object System.Net.NetworkCredential($m.Usuario, $m.Contrasena)
     $req.UseBinary = $true
-    $req.UsePassive = -not $m.Activo
+    $req.UsePassive = $true
     $req.EnableSsl = ($m.Protocolo -eq 'ftpes')
     $req.KeepAlive = $false
     $req.Proxy = $null
@@ -145,11 +169,9 @@ function Bajar-WinScp($m, $remoto, $local) {
     if (-not $winscp) { throw "para $($m.Protocolo.ToUpper()) hace falta WinSCP (ver LEEME)" }
     $url = '{0}://{1}:{2}@{3}:{4}/' -f $m.Protocolo, [Uri]::EscapeDataString($m.Usuario),
         [Uri]::EscapeDataString('' + $m.Contrasena), $m.Servidor, $m.Puerto
-    $clave = ''
-    if ($m.ClavePrivada) { $clave = ' -privatekey="{0}"' -f $m.ClavePrivada }
     $orden = @(
         'option batch abort', 'option confirm off',
-        "open $url -timeout=$Espera$clave",
+        "open $url -timeout=$Espera",
         ('get -transfer=binary "{0}" "{1}"' -f $remoto.Replace('"', '""'), $local.Replace('"', '""')),
         'exit'
     )
@@ -191,60 +213,263 @@ function Nombre-Valido($texto) {
     return $texto
 }
 
-# --- Programa ---
+# Recorre las máquinas en orden. $alAvisar recibe un texto de estado, $alTerminar cada resultado
+function Traer-Todo($cfg, $alAvisar, $alTerminar) {
+    $lista = @(Expandir-Ips $cfg.Ips)
+    $archivos = @($cfg.Archivo -split '[,;]' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    if ($lista.Count -eq 0) { throw 'Falta escribir las IP de las máquinas.' }
+    if ($archivos.Count -eq 0) { throw 'Falta escribir la ruta del archivo a traer.' }
 
-# Desde la línea de comandos (o el .bat) varios archivos llegan como un solo texto 'a,b'
-$Archivo = @($Archivo -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    $carpeta = Join-Path $cfg.Destino (Get-Date -Format 'yyyy-MM-dd_HHmm')
+    New-Item -ItemType Directory -Force -Path $carpeta | Out-Null
+    $usuario = $cfg.Usuario
+    $contrasena = $cfg.Contrasena
+    if (-not $usuario) { $usuario = 'anonymous'; $contrasena = 'anonymous@' }
+    # 01_, 02_... para que el Explorador las muestre en el mismo orden que las IP
+    $ancho = [math]::Max(2, ([string]$lista.Count).Length)
 
-if ($Lista) { $maquinas = @(Leer-Lista) } else { $maquinas = @(Leer-FileZilla) }
-if ($maquinas.Count -eq 0) {
-    throw 'No hay ninguna máquina que coincida con la carpeta o el nombre pedidos.'
-}
+    & $alAvisar ('Probando la conexión con {0} máquina(s)...' -f $lista.Count)
+    $responde = Probar-Conexion $lista $cfg.Puerto { & $alAvisar $null }
 
-$carpetaSalida = Join-Path $Destino (Get-Date -Format 'yyyy-MM-dd_HHmm')
-New-Item -ItemType Directory -Force -Path $carpetaSalida | Out-Null
-Write-Host ("Trayendo {0} de {1} máquina(s) a {2}" -f ($Archivo -join ', '), $maquinas.Count, $carpetaSalida)
-Write-Host ''
-
-$resultados = foreach ($m in $maquinas) {
-    foreach ($remoto in $Archivo) {
-        $base = (Nombre-Valido $m.Nombre) + '_' + (Nombre-Valido ($remoto -split '/')[-1])
-        $local = Join-Path $carpetaSalida $base
-        for ($n = 2; Test-Path -LiteralPath $local; $n++) {
-            $local = Join-Path $carpetaSalida ('{0}_{1}{2}' -f [IO.Path]::GetFileNameWithoutExtension($base), $n, [IO.Path]::GetExtension($base))
+    $resultados = @()
+    $n = 0
+    foreach ($ip in $lista) {
+        $n++
+        $m = [pscustomobject]@{
+            Servidor = $ip; Puerto = $cfg.Puerto; Protocolo = $cfg.Protocolo
+            Usuario = $usuario; Contrasena = $contrasena
         }
-        $parcial = "$local.parcial"
-        $copia = ''
-        try {
-            if ($m.Problema) { throw $m.Problema }
-            if ($null -eq $m.Contrasena) {
-                $segura = Read-Host "Contraseña de $($m.Usuario) en $($m.Nombre)" -AsSecureString
-                $m.Contrasena = (New-Object System.Net.NetworkCredential('', $segura)).Password
+        foreach ($remoto in $archivos) {
+            & $alAvisar ('Trayendo {0} de {1}: {2}' -f $n, $lista.Count, $ip)
+            $copia = '{0}_{1}_{2}' -f ([string]$n).PadLeft($ancho, '0'), (Nombre-Valido $ip), (Nombre-Valido ($remoto -split '/')[-1])
+            $local = Join-Path $carpeta $copia
+            $parcial = "$local.parcial"
+            try {
+                if (-not $responde[$ip]) { throw 'no responde (¿apagada o fuera de la red?)' }
+                if ($m.Protocolo -eq 'sftp' -or $m.Protocolo -eq 'ftps') { Bajar-WinScp $m $remoto $parcial }
+                else { Bajar-Ftp $m $remoto $parcial }
+                Move-Item -LiteralPath $parcial -Destination $local -Force
+                $estado = 'OK'
+                $detalle = '{0:N0} bytes' -f (Get-Item -LiteralPath $local).Length
+            } catch {
+                Remove-Item -LiteralPath $parcial -Force -ErrorAction SilentlyContinue
+                $estado = 'FALLO'
+                $detalle = Explicar-Error $_.Exception
+                $copia = ''
             }
-            if ($m.Protocolo -eq 'sftp' -or $m.Protocolo -eq 'ftps') { Bajar-WinScp $m $remoto $parcial }
-            else { Bajar-Ftp $m $remoto $parcial }
-            Move-Item -LiteralPath $parcial -Destination $local
-            $tamano = (Get-Item -LiteralPath $local).Length
-            $estado = 'OK'
-            $detalle = '{0:N0} bytes' -f $tamano
-            $copia = Split-Path $local -Leaf
-            Write-Host ('  OK     {0,-20} {1}  ({2})' -f $m.Nombre, $copia, $detalle) -ForegroundColor Green
-        } catch {
-            Remove-Item -LiteralPath $parcial -Force -ErrorAction SilentlyContinue
-            $estado = 'FALLO'
-            $detalle = Explicar-Error $_.Exception
-            Write-Host ('  FALLO  {0,-20} {1}: {2}' -f $m.Nombre, $remoto, $detalle) -ForegroundColor Red
-        }
-        [pscustomobject]@{
-            Maquina = $m.Nombre; Servidor = $m.Servidor; Archivo = $remoto
-            Resultado = $estado; Detalle = $detalle; Copia = $copia
+            $r = [pscustomobject]@{
+                Numero = $n; IP = $ip; Archivo = $remoto; Resultado = $estado; Detalle = $detalle; Copia = $copia
+            }
+            $resultados += $r
+            & $alTerminar $r
         }
     }
+    $resultados | Export-Csv -LiteralPath (Join-Path $carpeta 'resumen.csv') -Delimiter ';' -Encoding UTF8 -NoTypeInformation
+    $fallos = @($resultados | Where-Object { $_.Resultado -ne 'OK' }).Count
+    & $alAvisar ('Listo: {0} bien, {1} con fallo.' -f ($resultados.Count - $fallos), $fallos)
+    [pscustomobject]@{ Carpeta = $carpeta; Fallos = $fallos }
 }
 
-$resultados | Export-Csv -LiteralPath (Join-Path $carpetaSalida 'resumen.csv') -Delimiter ';' -Encoding UTF8 -NoTypeInformation
-$fallos = @($resultados | Where-Object { $_.Resultado -ne 'OK' }).Count
-Write-Host ''
-Write-Host ('Listo: {0} bien, {1} con fallo. Resumen en resumen.csv' -f (@($resultados).Count - $fallos), $fallos)
-if ($AbrirCarpeta) { Invoke-Item -LiteralPath $carpetaSalida }
-if ($fallos -gt 0) { exit 1 }
+# --- Sin ventana ---
+
+$cfg = Leer-Config
+if ($SinVentana) {
+    foreach ($campo in 'Ips', 'Usuario', 'Contrasena', 'Protocolo', 'Puerto', 'Archivo', 'Destino') {
+        if ($PSBoundParameters.ContainsKey($campo)) { $cfg.$campo = $PSBoundParameters[$campo] }
+    }
+    if ($PSBoundParameters.ContainsKey('Protocolo') -and -not $PSBoundParameters.ContainsKey('Puerto')) {
+        $cfg.Puerto = $puertosPorDefecto[$cfg.Protocolo]
+    }
+    if ($cfg.Usuario -and -not $cfg.Contrasena) {
+        $segura = Read-Host "Contraseña de $($cfg.Usuario)" -AsSecureString
+        $cfg.Contrasena = (New-Object System.Net.NetworkCredential('', $segura)).Password
+    }
+    $avisar = { param($texto) if ($texto) { Write-Host $texto } }
+    $mostrar = {
+        param($r)
+        if ($r.Resultado -eq 'OK') { Write-Host ('  OK     {0,-16} {1}  ({2})' -f $r.IP, $r.Copia, $r.Detalle) -ForegroundColor Green }
+        else { Write-Host ('  FALLO  {0,-16} {1}: {2}' -f $r.IP, $r.Archivo, $r.Detalle) -ForegroundColor Red }
+    }
+    $fin = Traer-Todo $cfg $avisar $mostrar
+    Write-Host "Copias y resumen.csv en $($fin.Carpeta)"
+    if ($fin.Fallos -gt 0) { exit 1 }
+    exit 0
+}
+
+# --- Ventana ---
+
+Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+[System.Windows.Forms.Application]::EnableVisualStyles()
+# La consola queda oculta: cualquier error inesperado se muestra en un cuadro
+trap {
+    [void][System.Windows.Forms.MessageBox]::Show("$_", 'Traer archivo')
+    break
+}
+
+$ventana = New-Object System.Windows.Forms.Form
+$ventana.Text = 'Traer archivo de varias máquinas'
+$ventana.ClientSize = New-Object System.Drawing.Size(760, 560)
+$ventana.MinimumSize = New-Object System.Drawing.Size(620, 480)
+$ventana.StartPosition = 'CenterScreen'
+$ventana.Font = New-Object System.Drawing.Font('Segoe UI', 9)
+
+function Nueva-Etiqueta($texto, $x, $y) {
+    $e = New-Object System.Windows.Forms.Label
+    $e.Text = $texto
+    $e.AutoSize = $true
+    $e.Location = New-Object System.Drawing.Point($x, ($y + 3))
+    $ventana.Controls.Add($e)
+    $e
+}
+
+function Nueva-Caja($x, $y, $ancho, $texto) {
+    $c = New-Object System.Windows.Forms.TextBox
+    $c.Location = New-Object System.Drawing.Point($x, $y)
+    $c.Width = $ancho
+    $c.Text = $texto
+    $ventana.Controls.Add($c)
+    $c
+}
+
+$arriba = [System.Windows.Forms.AnchorStyles]'Top, Left, Right'
+
+[void](Nueva-Etiqueta 'Servidores (IP):' 12 12)
+$cajaIps = Nueva-Caja 130 12 618 $cfg.Ips
+$cajaIps.Multiline = $true
+$cajaIps.ScrollBars = 'Vertical'
+$cajaIps.Height = 48
+$cajaIps.Anchor = $arriba
+$ayuda = Nueva-Etiqueta 'Separadas por coma o una por línea. Rangos: 192.168.1.101-120' 130 62
+$ayuda.ForeColor = [System.Drawing.Color]::Gray
+
+$codigos = @('ftp', 'ftpes', 'ftps', 'sftp')
+[void](Nueva-Etiqueta 'Protocolo:' 12 92)
+$listaProtocolo = New-Object System.Windows.Forms.ComboBox
+$listaProtocolo.DropDownStyle = 'DropDownList'
+$listaProtocolo.Location = New-Object System.Drawing.Point(130, 92)
+$listaProtocolo.Width = 230
+[void]$listaProtocolo.Items.AddRange(@('FTP', 'FTP con TLS explícito', 'FTPS implícito', 'SFTP (necesita WinSCP)'))
+$listaProtocolo.SelectedIndex = [math]::Max(0, [array]::IndexOf($codigos, $cfg.Protocolo))
+$ventana.Controls.Add($listaProtocolo)
+[void](Nueva-Etiqueta 'Puerto:' 380 92)
+$cajaPuerto = Nueva-Caja 450 92 60 ([string]$cfg.Puerto)
+
+[void](Nueva-Etiqueta 'Usuario:' 12 122)
+$cajaUsuario = Nueva-Caja 130 122 230 $cfg.Usuario
+[void](Nueva-Etiqueta 'Contraseña:' 380 122)
+$cajaContrasena = Nueva-Caja 450 122 180 $cfg.Contrasena
+$cajaContrasena.UseSystemPasswordChar = $true
+
+[void](Nueva-Etiqueta 'Archivo remoto:' 12 152)
+$cajaArchivo = Nueva-Caja 130 152 618 $cfg.Archivo
+$cajaArchivo.Anchor = $arriba
+
+[void](Nueva-Etiqueta 'Guardar en:' 12 182)
+$cajaDestino = Nueva-Caja 130 182 528 $cfg.Destino
+$cajaDestino.Anchor = $arriba
+$botonElegir = New-Object System.Windows.Forms.Button
+$botonElegir.Text = 'Elegir...'
+$botonElegir.Location = New-Object System.Drawing.Point(664, 181)
+$botonElegir.Width = 84
+$botonElegir.Anchor = 'Top, Right'
+$ventana.Controls.Add($botonElegir)
+
+$botonTraer = New-Object System.Windows.Forms.Button
+$botonTraer.Text = 'Traer archivos'
+$botonTraer.Location = New-Object System.Drawing.Point(130, 216)
+$botonTraer.Size = New-Object System.Drawing.Size(150, 30)
+$ventana.Controls.Add($botonTraer)
+
+$botonAbrir = New-Object System.Windows.Forms.Button
+$botonAbrir.Text = 'Abrir carpeta'
+$botonAbrir.Location = New-Object System.Drawing.Point(290, 216)
+$botonAbrir.Size = New-Object System.Drawing.Size(120, 30)
+$ventana.Controls.Add($botonAbrir)
+
+$etiquetaEstado = Nueva-Etiqueta '' 420 222
+
+$tabla = New-Object System.Windows.Forms.ListView
+$tabla.View = 'Details'
+$tabla.FullRowSelect = $true
+$tabla.GridLines = $true
+$tabla.Location = New-Object System.Drawing.Point(12, 258)
+$tabla.Size = New-Object System.Drawing.Size(736, 290)
+$tabla.Anchor = [System.Windows.Forms.AnchorStyles]'Top, Bottom, Left, Right'
+[void]$tabla.Columns.Add('N°', 45)
+[void]$tabla.Columns.Add('IP', 120)
+[void]$tabla.Columns.Add('Archivo', 150)
+[void]$tabla.Columns.Add('Resultado', 70)
+[void]$tabla.Columns.Add('Detalle', 330)
+$ventana.Controls.Add($tabla)
+
+$script:ultimaCarpeta = $null
+
+# Al cambiar de protocolo se pone su puerto habitual, salvo que se haya escrito otro
+$listaProtocolo.Add_SelectedIndexChanged({
+    if (@('', '21', '22', '990') -contains $cajaPuerto.Text.Trim()) {
+        $cajaPuerto.Text = [string]$puertosPorDefecto[$codigos[$listaProtocolo.SelectedIndex]]
+    }
+})
+
+$botonElegir.Add_Click({
+    $dialogo = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dialogo.SelectedPath = $cajaDestino.Text
+    if ($dialogo.ShowDialog() -eq 'OK') { $cajaDestino.Text = $dialogo.SelectedPath }
+})
+
+$botonAbrir.Add_Click({
+    $c = $script:ultimaCarpeta
+    if (-not $c) { $c = $cajaDestino.Text }
+    if (Test-Path -LiteralPath $c) { Invoke-Item -LiteralPath $c }
+})
+
+$botonTraer.Add_Click({
+    $puerto = 0
+    if (-not [int]::TryParse($cajaPuerto.Text.Trim(), [ref]$puerto) -or $puerto -lt 1 -or $puerto -gt 65535) {
+        [void][System.Windows.Forms.MessageBox]::Show('El puerto no es válido.', $ventana.Text)
+        return
+    }
+    $cfg.Ips = $cajaIps.Text.Trim()
+    $cfg.Protocolo = $codigos[$listaProtocolo.SelectedIndex]
+    $cfg.Puerto = $puerto
+    $cfg.Usuario = $cajaUsuario.Text.Trim()
+    $cfg.Contrasena = $cajaContrasena.Text
+    $cfg.Archivo = $cajaArchivo.Text.Trim()
+    $cfg.Destino = $cajaDestino.Text.Trim()
+
+    $botonTraer.Enabled = $false
+    $tabla.Items.Clear()
+    try {
+        Guardar-Config $cfg
+        $avisar = {
+            param($texto)
+            if ($texto) { $etiquetaEstado.Text = $texto }
+            [System.Windows.Forms.Application]::DoEvents()
+        }
+        $mostrar = {
+            param($r)
+            $fila = New-Object System.Windows.Forms.ListViewItem([string]$r.Numero)
+            [void]$fila.SubItems.Add($r.IP)
+            [void]$fila.SubItems.Add(($r.Archivo -split '/')[-1])
+            [void]$fila.SubItems.Add($r.Resultado)
+            $texto = $r.Detalle
+            if ($r.Copia) { $texto = '{0} - {1}' -f $r.Copia, $r.Detalle }
+            [void]$fila.SubItems.Add($texto)
+            if ($r.Resultado -eq 'OK') { $fila.ForeColor = [System.Drawing.Color]::DarkGreen }
+            else { $fila.ForeColor = [System.Drawing.Color]::Firebrick }
+            [void]$tabla.Items.Add($fila)
+            $fila.EnsureVisible()
+            [System.Windows.Forms.Application]::DoEvents()
+        }
+        $fin = Traer-Todo $cfg $avisar $mostrar
+        $script:ultimaCarpeta = $fin.Carpeta
+    } catch {
+        $etiquetaEstado.Text = ''
+        [void][System.Windows.Forms.MessageBox]::Show($_.Exception.Message, $ventana.Text,
+            [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+    } finally {
+        $botonTraer.Enabled = $true
+    }
+})
+
+[void]$ventana.ShowDialog()
