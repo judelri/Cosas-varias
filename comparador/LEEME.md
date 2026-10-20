@@ -88,10 +88,16 @@ los de una comparación de carpetas, los paneles abiertos o directamente los ele
 - **Copiar para Excel** copia **solo los valores**, uno debajo de otro y sin huecos (sin títulos, nombres
   de archivo ni ubicación), listos para pegar con Ctrl+V. **Exportar CSV** guarda la tabla completa.
 
-## Opciones de comparación
+## Opciones y atajos
 
-Ignorar espacios (cambios de cantidad o todos), mayúsculas, el tipo de fin de línea (Windows/Unix)
-y líneas en blanco. Se recuerdan en el navegador.
+Arriba a la derecha están **Opciones** y **Atajos**, disponibles en todas las pestañas.
+
+- **Opciones**: ignorar espacios (cambios de cantidad o todos), mayúsculas, el tipo de fin de línea
+  (Windows/Unix) y líneas en blanco; cómo se detectan los bloques plegables; método y filtros para
+  comparar carpetas. Se recuerdan en el equipo.
+- **Atajos**: la lista de atajos de teclado. Clic en una combinación y se pulsa la nueva; Supr la
+  quita, Esc cancela, y la flecha circular vuelve a la de fábrica. Si la combinación ya era de otra
+  función, avisa y se la quita a esa. Se recuerdan en el equipo.
 
 ## Guardar
 

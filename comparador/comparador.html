@@ -36,6 +36,10 @@ header.top .sep{width:1px;height:26px;background:rgba(255,255,255,.2);flex:none}
 .titulo{font-size:16px;font-weight:600;color:var(--header-text);white-space:nowrap}
 .arch{margin-left:auto;display:flex;align-items:center;gap:10px;min-width:0}
 #hdrInfo{font:12px var(--mono);color:var(--header-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.hbtn{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border:1px solid rgba(255,255,255,.22);background:transparent;color:var(--header-text);
+  border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;flex:none}
+.hbtn:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.4)}
+.hbtn svg{width:16px;height:16px}
 .chip{background:var(--accent);color:var(--on-accent);border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;white-space:nowrap}
 
 /* Pestañas */
@@ -81,7 +85,7 @@ kbd{font:11px var(--mono);color:var(--muted);border:1px solid var(--border);bord
 .lbl{font-size:12px;color:var(--muted);font-weight:600}
 
 /* Inicio */
-.inicio{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;min-height:0}
+.inicio{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;min-height:0}
 .lista{display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0;overflow:hidden}
 .lista .lh{padding:16px 18px 10px;display:grid;gap:4px}
 .items{overflow:auto;min-height:0;padding:0 12px 14px;display:grid;align-content:start;gap:6px}
@@ -230,6 +234,18 @@ table.hoja{border-collapse:separate;border-spacing:0;font-size:13px;min-width:10
 .hoja tfoot td{position:sticky;bottom:0;background:#faf9f5;font-weight:600;font-size:12px;border-top:1px solid #d5d2c8;color:var(--muted)}
 .hoja tfoot .rn{z-index:2}
 
+#opcDlg{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:0 28px;margin-bottom:8px}
+#opcDlg section{border-top:0;padding-top:4px}
+/* Atajos de teclado */
+.atl{display:grid;gap:2px;max-height:62vh;overflow:auto;margin:0 -6px 16px;padding:0 6px}
+.atl h3{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:14px 0 4px}
+.atr{display:grid;grid-template-columns:minmax(0,1fr) 190px 30px;gap:8px;align-items:center;min-height:36px;font-size:13px}
+.atr .kb{height:30px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);font:12px var(--mono);cursor:pointer;padding:0 8px}
+.atr .kb:hover{border-color:var(--border-strong)}
+.atr .kb.vacio{color:var(--muted);font-family:var(--font);font-style:italic}
+.atr .kb.esp{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+.atr .kb.cambio{background:#fff;border-color:var(--accent)}
+.atr .fijo{font:12px var(--mono);color:var(--muted);padding:0 8px}
 /* Avisos, diálogos y menú */
 .toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));display:grid;gap:6px;z-index:30;
   width:max-content;max-width:calc(100vw - 32px)}
@@ -267,7 +283,7 @@ dialog .fld{margin-bottom:12px}
 
 <header class="top">
   <span class="titulo">Comparador de archivos y carpetas</span>
-  <span class="arch"><span id="hdrInfo"></span><span class="chip" id="dirtyChip" hidden>Sin guardar</span></span>
+  <span class="arch"><span id="hdrInfo"></span><span class="chip" id="dirtyChip" hidden>Sin guardar</span><button class="hbtn" id="btnAtajos" title="Ver y cambiar los atajos de teclado"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="4" width="13" height="8.5" rx="1.5"/><path d="M4 6.5h1M7.5 6.5h1M11 6.5h1M4 9.5h8"/></svg>Atajos</button><button class="hbtn" id="btnOpc" title="Espacios, mayúsculas, plegado, carpetas…"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4.5h7M12 4.5h2M2 11.5h2M7 11.5h7"/><circle cx="10.5" cy="4.5" r="1.6"/><circle cx="5.5" cy="11.5" r="1.6"/></svg>Opciones</button></span>
 </header>
 
 <nav class="tabs" id="tabs" aria-label="Comparaciones abiertas"></nav>
@@ -302,7 +318,6 @@ dialog .fld{margin-bottom:12px}
         </div>
         <div class="items" id="items"></div>
       </section>
-      <aside class="card side" id="opcInicio" aria-label="Opciones"></aside>
     </main>
     <div></div>
   </section>
@@ -316,7 +331,7 @@ dialog .fld{margin-bottom:12px}
   <textarea id="txtArea" spellcheck="false" placeholder="Pega aquí el texto"></textarea>
   <div class="row"><button class="btn" id="txtNo">Cancelar</button><button class="btn prim" id="txtOk">Añadir</button></div>
 </dialog>
-<dialog id="dlgOpc"><h2>Opciones</h2><div id="opcDlg" class="side" style="padding:0;overflow:visible"></div><div class="row"><button class="btn prim" id="opcOk">Listo</button></div></dialog>
+<dialog id="dlgOpc" class="ancho" style="max-width:min(960px,calc(100vw - 32px))"><h2>Opciones</h2><div id="opcDlg" class="side" style="padding:0;overflow:visible"></div><div class="row"><button class="btn prim" id="opcOk">Listo</button></div></dialog>
 <dialog id="dlgCopiar">
   <h2>Copiar archivos entre carpetas</h2>
   <p class="sub" id="copInfo" style="margin-bottom:14px"></p>
@@ -324,6 +339,12 @@ dialog .fld{margin-bottom:12px}
   <div class="fld"><span>Hacia</span><div id="copHacia" style="display:grid;gap:6px"></div></div>
   <p class="sub" id="copNota" style="margin-bottom:16px">Los archivos que ya existan en el destino se sobrescriben.</p>
   <div class="row"><button class="btn" id="copNo">Cancelar</button><button class="btn prim" id="copOk">Copiar</button></div>
+</dialog>
+<dialog id="dlgAtajos" class="ancho">
+  <h2>Atajos de teclado</h2>
+  <p class="sub" style="margin-bottom:6px">Haz clic en una combinación y pulsa la nueva. <b>Supr</b> la deja sin atajo y <b>Esc</b> cancela. Se recuerdan en este equipo.</p>
+  <div class="atl" id="atLista"></div>
+  <div class="row"><button class="btn" id="atRest" style="margin-right:auto">Restaurar todos</button><button class="btn prim" id="atOk">Listo</button></div>
 </dialog>
 <div class="menu" id="menu" hidden role="menu"></div>
 <input type="file" id="inFiles" multiple hidden>
@@ -902,18 +923,7 @@ function formOpciones(el){
       '<label class="fld"><span>Método</span><select data-o="metodo"><option value="contenido">Contenido (aplica las opciones de texto)</option><option value="tamfecha">Tamaño y fecha (rápido)</option><option value="tam">Solo tamaño (lo más rápido)</option></select></label>'+
       '<label class="fld"><span>Excluir <i>(separado por ;, admite * y ?)</i></span><input data-o="excluir" spellcheck="false"></label>'+
       '<label class="fld"><span>Incluir solo <i>(vacío = todo, p. ej. *.c;*.h)</i></span><input data-o="incluir" spellcheck="false" placeholder="*.*"></label>'+
-    '</section>'+
-    '<section><h2>Atajos</h2><dl class="keys">'+
-      '<dt>Alt+↓ / Alt+↑</dt><dd>Diferencia siguiente / anterior</dd>'+
-      '<dt>Alt+→ / Alt+←</dt><dd>Copiar la diferencia al panel de la derecha / izquierda</dd>'+
-      '<dt>Alt+0 / Alt+Mayús+0</dt><dd>Plegar / desplegar todo</dd>'+
-      '<dt>Alt+1…8</dt><dd>Plegar ese nivel (con Mayús, desplegarlo)</dd>'+
-      '<dt>Ctrl+Alt+F</dt><dd>Plegar el bloque actual (con Mayús, desplegarlo)</dd>'+
-      '<dt>Doble clic / F2</dt><dd>Editar la línea</dd>'+
-      '<dt>Ctrl+F · F3</dt><dd>Buscar · siguiente</dd>'+
-      '<dt>Ctrl+S · Ctrl+Z · Ctrl+Y</dt><dd>Guardar · deshacer · rehacer</dd>'+
-      '<dt>F5</dt><dd>Volver a leer y comparar</dd>'+
-    '</dl></section>';
+    '</section>';
   formularios.push(el);llenarForm(el);
   el.addEventListener('change',function(e){
     var k=e.target.dataset.o;if(!k)return;
@@ -927,10 +937,98 @@ function llenarForm(el){
   el.querySelectorAll('[data-o]').forEach(function(i){var v=OPC[i.dataset.o];if(i.type==='checkbox')i.checked=!!v;else i.value=v;});
 }
 function opcDiff(){return{espacios:OPC.espacios,mayus:OPC.mayus,blancas:OPC.blancas,eol:OPC.eol,ms:2500};}
-formOpciones($('opcInicio'));
 formOpciones($('opcDlg'));
 $('opcOk').onclick=function(){$('dlgOpc').close();};
 function abrirOpciones(){try{$('dlgOpc').showModal();}catch(e){}}
+$('btnOpc').onclick=abrirOpciones;
+
+/* ---------- Atajos de teclado: se pueden cambiar y se recuerdan en este navegador ---------- */
+var ATAJOS=[
+  {g:'Navegar',id:'sig',t:'Diferencia siguiente',d:'Alt+ArrowDown'},
+  {id:'ant',t:'Diferencia anterior',d:'Alt+ArrowUp'},
+  {id:'pri',t:'Primera diferencia',d:'Alt+Home'},
+  {id:'ult',t:'Última diferencia',d:'Alt+End'},
+  {id:'solo',t:'Solo diferencias (ocultar o mostrar lo igual)',d:''},
+  {g:'Copiar y editar',id:'der',t:'Copiar la diferencia al panel de la derecha',d:'Alt+ArrowRight'},
+  {id:'izq',t:'Copiar la diferencia al panel de la izquierda',d:'Alt+ArrowLeft'},
+  {id:'todos',t:'Copiar la diferencia a todos los paneles',d:''},
+  {id:'editar',t:'Editar la línea (también con doble clic)',d:'F2'},
+  {id:'guardar',t:'Guardar',d:'Ctrl+S'},
+  {id:'deshacer',t:'Deshacer',d:'Ctrl+Z'},
+  {id:'rehacer',t:'Rehacer',d:'Ctrl+Y'},
+  {g:'Plegado de código',id:'plegarTodo',t:'Plegar todo',d:'Alt+0'},
+  {id:'desplegarTodo',t:'Desplegar todo',d:'Alt+Shift+0'},
+  {id:'plegarAct',t:'Plegar el bloque actual',d:'Ctrl+Alt+F'},
+  {id:'desplegarAct',t:'Desplegar el bloque actual',d:'Ctrl+Alt+Shift+F'},
+  {fijo:'Alt+1…8 · Alt+Mayús+1…8',t:'Plegar / desplegar ese nivel'},
+  {g:'Buscar',id:'buscar',t:'Buscar',d:'Ctrl+F'},
+  {id:'buscarSig',t:'Buscar siguiente',d:'F3'},
+  {id:'buscarAnt',t:'Buscar anterior',d:'Shift+F3'},
+  {g:'General',id:'recargar',t:'Volver a leer y comparar',d:'F5'},
+  {id:'comparar',t:'Comparar (en Inicio)',d:'Ctrl+Enter'},
+  {id:'abrir',t:'Añadir archivos (en Inicio)',d:'Ctrl+O'}
+];
+var ATK={};
+function cargarAtajos(){
+  var u={};try{u=JSON.parse(localStorage.getItem('comparador.atajos')||'{}');}catch(e){}
+  ATAJOS.forEach(function(a){if(a.id)ATK[a.id]=a.id in u?u[a.id]:a.d;});
+}
+cargarAtajos();
+function guardarAtajos(){
+  var u={};ATAJOS.forEach(function(a){if(a.id&&ATK[a.id]!==a.d)u[a.id]=ATK[a.id];});
+  try{localStorage.setItem('comparador.atajos',JSON.stringify(u));}catch(e){}
+}
+function comboDe(e){
+  if(/^(Control|Alt|Shift|Meta|AltGraph|OS)$/.test(e.key))return null;
+  var c=e.code||'',k;
+  if(/^Key[A-Z]$/.test(c))k=c.slice(3);
+  else if(/^Digit\d$/.test(c))k=c.slice(5);
+  else if(/^Numpad\d$/.test(c))k=c.slice(6);
+  else k=e.key===' '?'Space':e.key.length===1?e.key.toUpperCase():e.key;
+  return(e.ctrlKey||e.metaKey?'Ctrl+':'')+(e.altKey?'Alt+':'')+(e.shiftKey?'Shift+':'')+k;
+}
+function accion(e){var c=comboDe(e);if(!c)return null;for(var id in ATK)if(ATK[id]===c)return id;return null;}
+var NOM_TECLA={Shift:'Mayús',ArrowDown:'↓',ArrowUp:'↑',ArrowLeft:'←',ArrowRight:'→',Enter:'Intro',Home:'Inicio',End:'Fin',Space:'Espacio',
+  Escape:'Esc',Delete:'Supr',Backspace:'Retroceso',PageUp:'RePág',PageDown:'AvPág',Insert:'Insert',Tab:'Tab'};
+function verTecla(c){return c?c.split('+').map(function(x){return NOM_TECLA[x]||x;}).join('+'):'';}
+function tk(id){return verTecla(ATK[id]);}
+function conTecla(txt,id){var k=tk(id);return k?txt+' ('+k+')':txt;}
+var capturando=null;
+function pintarAtajos(){
+  var h='';
+  ATAJOS.forEach(function(a){
+    if(a.g)h+='<h3>'+esc(a.g)+'</h3>';
+    if(a.fijo){h+='<div class="atr"><span>'+esc(a.t)+'</span><span class="fijo">'+esc(a.fijo)+'</span><span></span></div>';return;}
+    var v=ATK[a.id],cl=capturando===a.id?' esp':!v?' vacio':v!==a.d?' cambio':'';
+    h+='<div class="atr"><span>'+esc(a.t)+'</span><button class="kb'+cl+'" data-id="'+a.id+'" title="Clic para cambiar">'+
+      (capturando===a.id?'Pulsa la combinación…':v?esc(verTecla(v)):'sin atajo')+'</button>'+
+      '<button class="ic" data-rs="'+a.id+'" title="Volver al de fábrica: '+esc(verTecla(a.d)||'sin atajo')+'"'+(v===a.d?' disabled':'')+'><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 2.5v3.5H6"/><path d="M2.8 6A5.5 5.5 0 1 1 3 10.5"/></svg></button></div>';
+  });
+  $('atLista').innerHTML=h;
+}
+function abrirAtajos(){capturando=null;pintarAtajos();try{$('dlgAtajos').showModal();}catch(e){}}
+$('btnAtajos').onclick=abrirAtajos;
+$('atLista').addEventListener('click',function(e){
+  var b=e.target.closest('[data-id]'),r=e.target.closest('[data-rs]');
+  if(b){capturando=capturando===b.dataset.id?null:b.dataset.id;pintarAtajos();var nb=$('atLista').querySelector('[data-id="'+b.dataset.id+'"]');if(nb)nb.focus();}
+  else if(r){var a=ATAJOS.find(function(x){return x.id===r.dataset.rs;});asignar(a.id,a.d);}
+});
+function asignar(id,c){
+  if(c)for(var o in ATK)if(o!==id&&ATK[o]===c){
+    ATK[o]='';var a=ATAJOS.find(function(x){return x.id===o;});toast('«'+a.t+'» se quedó sin atajo: '+verTecla(c)+' ahora es para otra cosa.');
+  }
+  ATK[id]=c;capturando=null;guardarAtajos();pintarAtajos();
+}
+$('dlgAtajos').addEventListener('keydown',function(e){
+  if(!capturando)return;
+  e.preventDefault();e.stopPropagation();
+  if(e.key==='Escape'){capturando=null;pintarAtajos();return;}
+  if(e.key==='Delete'||e.key==='Backspace'){asignar(capturando,'');return;}
+  var c=comboDe(e);if(c)asignar(capturando,c);
+},true);
+$('dlgAtajos').addEventListener('cancel',function(e){if(capturando){e.preventDefault();capturando=null;pintarAtajos();}});
+$('atOk').onclick=function(){capturando=null;$('dlgAtajos').close();};
+$('atRest').onclick=function(){ATAJOS.forEach(function(a){if(a.id)ATK[a.id]=a.d;});guardarAtajos();pintarAtajos();toast('Atajos de fábrica restaurados.');};
 
 /* ---------- Pestañas ---------- */
 var tabs=[],tabAct=null;
@@ -1003,7 +1101,7 @@ function pintarItems(){
   var nA=items.filter(function(x){return x.tipo!=='carpeta';}).length,nC=items.length-nA;
   $('itemsCnt').textContent=items.length?'· '+(nC&&nA?'mezcla de archivos y carpetas':nC?plural(nC,'carpeta','carpetas'):plural(nA,'archivo','archivos')):'';
   $('btnComparar').disabled=items.length<2||(nA>0&&nC>0);
-  $('btnComparar').title=nA&&nC?'Elige solo archivos o solo carpetas':'Comparar los elementos de la lista (Ctrl+Intro)';
+  $('btnComparar').title=nA&&nC?'Elige solo archivos o solo carpetas':conTecla('Comparar los elementos de la lista','comparar');
   $('btnVaciar').disabled=!items.length;
   if(tabAct===tabInicio)cabecera();
 }
@@ -1151,7 +1249,7 @@ document.addEventListener('drop',function(e){
     }
     pintarItems();activar(tabInicio);
     var nA=items.filter(function(x){return x.tipo!=='carpeta';}).length,nC=items.length-nA;
-    if(items.length>=2&&!(nA&&nC))toast('Listo: pulsa Comparar (Ctrl+Intro).');
+    if(items.length>=2&&!(nA&&nC))toast('Listo: pulsa Comparar'+(tk('comparar')?' ('+tk('comparar')+')':'')+'.');
   });
 });
 
@@ -1219,31 +1317,30 @@ function VistaArchivos(panes,titulo,origen){
   el.innerHTML=
     '<div class="card toolbar" role="toolbar" aria-label="Comandos de la comparación">'+
       '<div class="grp">'+
-        '<button class="btn ico" data-c="pri" title="Primera diferencia (Alt+Inicio)">'+sv('M3 2.5h10M8 5.5v8M4.5 9L8 5.5 11.5 9')+'</button>'+
-        '<button class="btn" data-c="ant" title="Diferencia anterior (Alt+↑)">'+sv('M8 13V3M4 7l4-4 4 4')+'Anterior</button>'+
-        '<button class="btn" data-c="sig" title="Diferencia siguiente (Alt+↓)">'+sv('M8 3v10M4 9l4 4 4-4')+'Siguiente</button>'+
-        '<button class="btn ico" data-c="ult" title="Última diferencia (Alt+Fin)">'+sv('M3 13.5h10M8 10.5v-8M4.5 7L8 10.5 11.5 7')+'</button>'+
+        '<button class="btn ico" data-c="pri" title="'+esc(conTecla('Primera diferencia','pri'))+'">'+sv('M3 2.5h10M8 5.5v8M4.5 9L8 5.5 11.5 9')+'</button>'+
+        '<button class="btn" data-c="ant" title="'+esc(conTecla('Diferencia anterior','ant'))+'">'+sv('M8 13V3M4 7l4-4 4 4')+'Anterior</button>'+
+        '<button class="btn" data-c="sig" title="'+esc(conTecla('Diferencia siguiente','sig'))+'">'+sv('M8 3v10M4 9l4 4 4-4')+'Siguiente</button>'+
+        '<button class="btn ico" data-c="ult" title="'+esc(conTecla('Última diferencia','ult'))+'">'+sv('M3 13.5h10M8 10.5v-8M4.5 7L8 10.5 11.5 7')+'</button>'+
       '</div><span class="vsep"></span>'+
       '<div class="grp">'+
-        '<button class="btn" data-c="izq" title="Copiar la diferencia del panel activo al de la izquierda (Alt+←)">'+sv('M13 8H3M7 4L3 8l4 4')+'Copiar</button>'+
-        '<button class="btn" data-c="der" title="Copiar la diferencia del panel activo al de la derecha (Alt+→)">Copiar'+sv('M3 8h10M9 4l4 4-4 4')+'</button>'+
-        '<button class="btn" data-c="todos" title="Copiar la diferencia del panel activo a todos los demás">A todos</button>'+
+        '<button class="btn" data-c="izq" title="'+esc(conTecla('Copiar la diferencia del panel activo al de la izquierda','izq'))+'">'+sv('M13 8H3M7 4L3 8l4 4')+'Copiar</button>'+
+        '<button class="btn" data-c="der" title="'+esc(conTecla('Copiar la diferencia del panel activo al de la derecha','der'))+'">Copiar'+sv('M3 8h10M9 4l4 4-4 4')+'</button>'+
+        '<button class="btn" data-c="todos" title="'+esc(conTecla('Copiar la diferencia del panel activo a todos los demás','todos'))+'">A todos</button>'+
       '</div><span class="vsep"></span>'+
       '<div class="grp">'+
-        '<button class="btn ico" data-c="undo" title="Deshacer (Ctrl+Z)" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3L2 6l3 3M2 6h7.5a4 4 0 010 8H6"/></svg></button>'+
-        '<button class="btn ico" data-c="redo" title="Rehacer (Ctrl+Y)" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 3l3 3-3 3M14 6H6.5a4 4 0 000 8H10"/></svg></button>'+
-        '<button class="btn prim" data-c="guardar" title="Guardar los paneles modificados (Ctrl+S)" disabled>'+SVG_G+'Guardar</button>'+
+        '<button class="btn ico" data-c="undo" title="'+esc(conTecla('Deshacer','deshacer'))+'" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3L2 6l3 3M2 6h7.5a4 4 0 010 8H6"/></svg></button>'+
+        '<button class="btn ico" data-c="redo" title="'+esc(conTecla('Rehacer','rehacer'))+'" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 3l3 3-3 3M14 6H6.5a4 4 0 000 8H10"/></svg></button>'+
+        '<button class="btn prim" data-c="guardar" title="'+esc(conTecla('Guardar los paneles modificados','guardar'))+'" disabled>'+SVG_G+'Guardar</button>'+
       '</div><span class="vsep"></span>'+
       '<div class="grp">'+
-        '<button class="btn" data-c="solo" aria-pressed="false" title="Ocultar las partes iguales y dejar solo las diferencias con algo de contexto">Solo diferencias</button>'+
-        '<button class="btn ico" data-c="plegar" title="Plegar todo en el panel activo (Alt+0)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><path d="M5 8h6"/></svg></button>'+
-        '<button class="btn ico" data-c="desplegar" title="Desplegar todo (Alt+Mayús+0)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><path d="M5 8h6M8 5v6"/></svg></button>'+
+        '<button class="btn" data-c="solo" aria-pressed="false" title="'+esc(conTecla('Ocultar las partes iguales y dejar solo las diferencias con algo de contexto','solo'))+'">Solo diferencias</button>'+
+        '<button class="btn ico" data-c="plegar" title="'+esc(conTecla('Plegar todo en el panel activo','plegarTodo'))+'"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><path d="M5 8h6"/></svg></button>'+
+        '<button class="btn ico" data-c="desplegar" title="'+esc(conTecla('Desplegar todo','desplegarTodo'))+'"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><path d="M5 8h6M8 5v6"/></svg></button>'+
         '<label class="lbl" style="display:flex;align-items:center;gap:6px">Base <select class="sel-in" data-c="base"></select></label>'+
       '</div>'+
       '<div class="grp" style="margin-left:auto">'+
-        '<input class="busca" data-c="busca" type="search" placeholder="Buscar (Ctrl+F)" spellcheck="false">'+
+        '<input class="busca" data-c="busca" type="search" placeholder="'+esc(conTecla('Buscar','buscar'))+'" spellcheck="false">'+
         '<button class="btn" data-c="valores" title="Sacar el valor <palabra>valor</palabra> de una misma línea (o de una palabra) en estos archivos">Extraer valores</button>'+
-        '<button class="btn" data-c="opc" title="Espacios, mayúsculas, plegado…">Opciones</button>'+
       '</div>'+
     '</div>'+
     '<div class="card fc"><div class="fc-main"><div class="heads"><div class="heads-in"></div></div>'+
@@ -1564,7 +1661,7 @@ function VistaArchivos(panes,titulo,origen){
   function copiar(desde,hacia){
     var b=dsel>=0?al.bloques[dsel]:null;
     if(!b){var i=bloqueEn(cur.r);if(i>=0){dsel=i;b=al.bloques[i];}}
-    if(!b){toast('Primero sitúate en una diferencia (clic en ella o Alt+↓).');return;}
+    if(!b){toast('Primero sitúate en una diferencia (clic en ella'+(tk('sig')?' o '+tk('sig'):'')+').');return;}
     hacia=hacia.filter(function(t){return t!==desde&&t>=0&&t<N;});
     var ro=hacia.filter(function(t){return panes[t].soloLectura;});
     if(ro.length){toast('El panel '+panes[ro[0]].letra+' es de solo lectura.',true);return;}
@@ -1680,6 +1777,8 @@ function VistaArchivos(panes,titulo,origen){
 
   function fuentesValores(){return panes.map(function(p){return{nombre:p.nombre,clave:'',donde:'Panel '+p.letra+(p.ruta?' · '+p.ruta:''),texto:p.binario?null:p.lines.join('\n')};});}
 
+  function alternarSolo(){soloDif=!soloDif;revelados.clear();construir();pintarTodo();if(dsel>=0)centrar(al.bloques[dsel][0],true);}
+
   /* ---------- Eventos ---------- */
   el.querySelector('.toolbar').addEventListener('click',function(e){
     var b=e.target.closest('button[data-c]');if(!b)return;
@@ -1690,7 +1789,7 @@ function VistaArchivos(panes,titulo,origen){
     else if(c==='todos')copiar(T.act,panes.map(function(p,f){return f;}));
     else if(c==='undo')deshacer();else if(c==='redo')rehacer();
     else if(c==='guardar')guardarTodo();
-    else if(c==='solo'){soloDif=!soloDif;revelados.clear();construir();pintarTodo();if(dsel>=0)centrar(al.bloques[dsel][0],true);}
+    else if(c==='solo')alternarSolo();
     else if(c==='plegar')plegarTodo(true);else if(c==='desplegar')plegarTodo(false);
     else if(c==='opc')abrirOpciones();
     else if(c==='valores'){var jj=al.cols[T.act][cur.r];abrirValores(fuentesValores(),titulo,jj>=0?{modo:PREF_V.modo,lineas:PREF_V.modo==='linea'?String(jj+1):''}:null);}
@@ -1732,18 +1831,18 @@ function VistaArchivos(panes,titulo,origen){
     e.preventDefault();
     T.act=x.f;cur.r=x.r;dsel=bloqueEn(x.r);pintarCabezas();marcarSel();
     var f=x.f,r=x.r,j=al.cols[f][r],p=panes[f],enDif=dsel>=0,ro=p.soloLectura,bc=j>=0?bloqueCodigo(f,j):null,it=[];
-    it.push({t:'Editar línea',k:'F2',fn:function(){editar(f,r);},dis:ro});
+    it.push({t:'Editar línea',k:tk('editar'),fn:function(){editar(f,r);},dis:ro});
     it.push({t:'Insertar línea debajo',fn:function(){insertar(f,r);},dis:ro});
     it.push({t:'Borrar línea',fn:function(){borrar(f,r);},dis:ro||j<0});
     it.push({t:'Copiar línea al portapapeles',fn:function(){navigator.clipboard&&navigator.clipboard.writeText(p.lines[j]).then(function(){toast('Línea copiada.');});},dis:j<0});
     it.push('-');
-    panes.forEach(function(q2,g){if(g!==f)it.push({t:'Copiar esta diferencia a '+q2.letra+' ('+q2.nombre+')',k:g===f+1?'Alt+→':g===f-1?'Alt+←':'',fn:function(){copiar(f,[g]);},dis:!enDif||q2.soloLectura});});
+    panes.forEach(function(q2,g){if(g!==f)it.push({t:'Copiar esta diferencia a '+q2.letra+' ('+q2.nombre+')',k:g===f+1?tk('der'):g===f-1?tk('izq'):'',fn:function(){copiar(f,[g]);},dis:!enDif||q2.soloLectura});});
     if(N>2)it.push({t:'Copiar esta diferencia a todos',fn:function(){copiar(f,panes.map(function(a,g){return g;}));},dis:!enDif});
     it.push('-');
-    if(bc){var ce=plegados.has(f+':'+bc.s);it.push({t:(ce?'Desplegar':'Plegar')+' bloque (líneas '+(bc.s+1)+'–'+(bc.e+1)+')',k:'Ctrl+Alt+F',fn:function(){alternar(f,bc.s);}});}
+    if(bc){var ce=plegados.has(f+':'+bc.s);it.push({t:(ce?'Desplegar':'Plegar')+' bloque (líneas '+(bc.s+1)+'–'+(bc.e+1)+')',k:tk(ce?'desplegarAct':'plegarAct'),fn:function(){alternar(f,bc.s);}});}
     if(j>=0)it.push({t:'Sacar el valor de la línea '+(j+1)+' en todos los paneles',fn:function(){abrirValores(fuentesValores(),titulo,{modo:'linea',lineas:String(j+1)});}});
     it.push({t:'Usar '+p.letra+' como base',fn:function(){T.base=f;dsel=-1;recalc();irBloque(0,true);},dis:f===T.base});
-    it.push({t:'Guardar panel '+p.letra,k:'Ctrl+S',fn:function(){guardar(f);},dis:!p.sucio});
+    it.push({t:'Guardar panel '+p.letra,k:tk('guardar'),fn:function(){guardar(f);},dis:!p.sucio});
     menu(e.clientX,e.clientY,it);
   });
   vp.addEventListener('scroll',function(){
@@ -1775,29 +1874,35 @@ function VistaArchivos(panes,titulo,origen){
 
   /* ---------- Atajos ---------- */
   T.teclas=function(e){
-    var c=e.code,ctrl=e.ctrlKey||e.metaKey,enInput=/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement&&document.activeElement.tagName);
-    if(e.altKey&&!ctrl){
-      if(e.key==='ArrowDown'){sig();return true;}
-      if(e.key==='ArrowUp'){ant();return true;}
-      if(e.key==='Home'){irBloque(0);return true;}
-      if(e.key==='End'){irBloque(al.bloques.length-1);return true;}
-      if(e.key==='ArrowRight'){copiar(T.act,[T.act+1]);return true;}
-      if(e.key==='ArrowLeft'){copiar(T.act,[T.act-1]);return true;}
-      var m=/^Digit([0-8])$/.exec(c);
-      if(m){var n=+m[1];if(n===0)plegarTodo(!e.shiftKey);else plegarNivel(n,!e.shiftKey);return true;}
+    var c=e.code,ctrl=e.ctrlKey||e.metaKey,enInput=/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement&&document.activeElement.tagName),a=accion(e);
+    if(e.altKey&&!ctrl&&!a){var m=/^Digit([1-8])$/.exec(c);if(m){plegarNivel(+m[1],!e.shiftKey);return true;}}
+    /* escribiendo en un cuadro de texto solo valen los atajos con Alt y los de guardar, buscar y recargar */
+    if(a&&enInput&&!e.altKey&&['guardar','buscar','buscarSig','buscarAnt','recargar'].indexOf(a)<0)a=null;
+    switch(a){
+      case'sig':sig();return true;
+      case'ant':ant();return true;
+      case'pri':irBloque(0);return true;
+      case'ult':irBloque(al.bloques.length-1);return true;
+      case'solo':alternarSolo();return true;
+      case'der':copiar(T.act,[T.act+1]);return true;
+      case'izq':copiar(T.act,[T.act-1]);return true;
+      case'todos':copiar(T.act,panes.map(function(p,f){return f;}));return true;
+      case'editar':editar(T.act,cur.r);return true;
+      case'guardar':guardarTodo();return true;
+      case'deshacer':deshacer();return true;
+      case'rehacer':rehacer();return true;
+      case'plegarTodo':plegarTodo(true);return true;
+      case'desplegarTodo':plegarTodo(false);return true;
+      case'plegarAct':plegarActual(true);return true;
+      case'desplegarAct':plegarActual(false);return true;
+      case'buscar':inBusca.focus();inBusca.select();return true;
+      case'buscarSig':buscarSig(1);return true;
+      case'buscarAnt':buscarSig(-1);return true;
+      case'recargar':recargar();return true;
     }
-    if(ctrl&&e.altKey&&c==='KeyF'){plegarActual(!e.shiftKey);return true;}
-    if(ctrl&&!e.altKey){
-      if(c==='KeyS'){guardarTodo();return true;}
-      if(c==='KeyF'){inBusca.focus();inBusca.select();return true;}
-      if(enInput)return false;
-      if(c==='KeyZ'&&!e.shiftKey){deshacer();return true;}
-      if(c==='KeyY'||(c==='KeyZ'&&e.shiftKey)){rehacer();return true;}
-    }
-    if(e.key==='F3'){buscarSig(e.shiftKey?-1:1);return true;}
-    if(e.key==='F5'){recargar();return true;}
+    if(!enInput&&ctrl&&e.shiftKey&&!e.altKey&&c==='KeyZ'){rehacer();return true;}
     if(enInput)return false;
-    if(e.key==='F2'||(e.key==='Enter'&&document.activeElement===vp)){editar(T.act,cur.r);return true;}
+    if(e.key==='Enter'&&document.activeElement===vp){editar(T.act,cur.r);return true;}
     if(document.activeElement===vp&&!e.altKey&&!ctrl){
       if(e.key==='ArrowDown'){moverCursor(1);return true;}
       if(e.key==='ArrowUp'){moverCursor(-1);return true;}
@@ -1908,7 +2013,7 @@ function VistaCarpetas(fuentes){
       '<div class="grp">'+
         '<button class="btn prim" data-c="abrir" title="Comparar los archivos seleccionados (Intro)">'+ICO.dos+'Comparar</button>'+
         '<button class="btn" data-c="copiar" title="Copiar archivos de una carpeta a otras">Copiar…</button>'+
-        '<button class="btn" data-c="recomp" title="Volver a leer y comparar (F5)">Actualizar</button>'+
+        '<button class="btn" data-c="recomp" title="'+esc(conTecla('Volver a leer y comparar','recargar'))+'">Actualizar</button>'+
       '</div><span class="vsep"></span>'+
       '<div class="grp">'+
         '<button class="btn" data-c="arbol" aria-pressed="true" title="Árbol de carpetas o lista plana">Árbol</button>'+
@@ -1924,7 +2029,6 @@ function VistaCarpetas(fuentes){
         '<input class="busca" data-c="busca" type="search" placeholder="Filtrar por nombre" spellcheck="false">'+
         '<button class="btn" data-c="valores" title="Sacar el valor <palabra>valor</palabra> de una misma línea (o de una palabra) en todos los archivos">Extraer valores</button>'+
         '<button class="btn" data-c="csv" title="Exportar el resultado a CSV (Excel)">Exportar</button>'+
-        '<button class="btn" data-c="opc" title="Método, exclusiones y opciones de texto">Opciones</button>'+
       '</div>'+
     '</div>'+
     '<div class="card cc"><div class="cc-head"></div><div class="vp" tabindex="0" aria-label="Archivos"><div class="lienzo"><div class="filas"></div></div></div></div>'+
@@ -2270,7 +2374,7 @@ function VistaCarpetas(fuentes){
   }
   T.teclas=function(e){
     var enInput=/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement&&document.activeElement.tagName),ctrl=e.ctrlKey||e.metaKey;
-    if(e.key==='F5'){recomparar();return true;}
+    if(accion(e)==='recargar'){recomparar();return true;}
     if(enInput)return false;
     var n=lista[foco];
     if(e.key==='ArrowDown'||e.key==='ArrowUp'){var k=Math.max(0,Math.min(lista.length-1,(foco<0?-1:foco)+(e.key==='ArrowDown'?1:-1)));if(e.shiftKey)elegir(k,{shiftKey:true});else elegir(k);verFoco();return true;}
@@ -2288,7 +2392,7 @@ function VistaCarpetas(fuentes){
     else refrescar(true);
     setTimeout(function(){if(!el.hidden)vp.focus();},0);
   };
-  T.opciones=function(k){if(['metodo','excluir','incluir','espacios','mayus','eol','blancas'].indexOf(k)>=0)toast('Pulsa «Actualizar» (F5) para comparar las carpetas con las nuevas opciones.');};
+  T.opciones=function(k){if(['metodo','excluir','incluir','espacios','mayus','eol','blancas'].indexOf(k)>=0)toast('Pulsa «Actualizar»'+(tk('recargar')?' ('+tk('recargar')+')':'')+' para comparar las carpetas con las nuevas opciones.');};
   T.info=function(){return plural(N,'carpeta','carpetas')+(raiz?' · '+plural(archivos.length,'archivo','archivos'):'');};
   T.destruir=function(){cancelado=true;ro.disconnect();};
   T.estadoPub=function(){return{raiz:raiz,archivos:archivos,lista:lista,trabajando:trabajando};};
@@ -2672,12 +2776,14 @@ document.addEventListener('keydown',function(e){
   if(!menuEl.hidden){if(e.key==='Escape'){cerrarMenu();e.preventDefault();}return;}
   var ctrl=e.ctrlKey||e.metaKey;
   if(tabAct===tabInicio){
-    if(ctrl&&e.key==='Enter'){e.preventDefault();comparar();}
-    else if(ctrl&&e.code==='KeyO'){e.preventDefault();elegirArchivos();}
+    var ac=accion(e);
+    if(ac==='comparar'){e.preventDefault();comparar();}
+    else if(ac==='abrir'){e.preventDefault();elegirArchivos();}
     return;
   }
   if(tabAct&&tabAct.teclas&&tabAct.teclas(e))e.preventDefault();
 });
+$('btnArch').title=conTecla('Añadir uno o varios archivos','abrir');
 pintarItems();
 activar(tabInicio);
 /* En la aplicación de escritorio (Comparador.exe) la ventana pregunta antes de cerrar si hay cambios sin guardar */
