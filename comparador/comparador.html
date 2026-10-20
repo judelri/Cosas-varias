@@ -226,6 +226,7 @@ table.hoja{border-collapse:separate;border-spacing:0;font-size:13px;min-width:10
 .hoja td.num{text-align:right;font-variant-numeric:tabular-nums}
 .hoja td.ub{color:var(--muted);font-size:12px}
 .hoja td.dif{background:var(--chg)}
+.hoja td.raw{color:var(--muted);font-style:italic}
 .hoja td.aus{background:var(--hatch);color:var(--muted);font:11px var(--font)}
 .hoja .sel{outline:2px solid #1f8a5b;outline-offset:-2px}
 .hoja tfoot td{position:sticky;bottom:0;background:#faf9f5;font-weight:600;font-size:12px;border-top:1px solid #d5d2c8;color:var(--muted)}
@@ -1168,7 +1169,7 @@ function VistaArchivos(panes,titulo,origen){
       '</div>'+
       '<div class="grp" style="margin-left:auto">'+
         '<input class="busca" data-c="busca" type="search" placeholder="Buscar (Ctrl+F)" spellcheck="false">'+
-        '<button class="btn" data-c="valores" title="Sacar el valor de una etiqueta <palabra>valor</palabra> de estos archivos">Extraer valores</button>'+
+        '<button class="btn" data-c="valores" title="Sacar el valor <palabra>valor</palabra> de una misma línea (o de una palabra) en estos archivos">Extraer valores</button>'+
         '<button class="btn" data-c="opc" title="Espacios, mayúsculas, plegado…">Opciones</button>'+
       '</div>'+
     '</div>'+
@@ -1604,6 +1605,8 @@ function VistaArchivos(panes,titulo,origen){
     toast('No aparece «'+inBusca.value+'» en ningún panel.');
   }
 
+  function fuentesValores(){return panes.map(function(p){return{nombre:p.nombre,clave:'',donde:'Panel '+p.letra+(p.ruta?' · '+p.ruta:''),texto:p.binario?null:p.lines.join('\n')};});}
+
   /* ---------- Eventos ---------- */
   el.querySelector('.toolbar').addEventListener('click',function(e){
     var b=e.target.closest('button[data-c]');if(!b)return;
@@ -1617,7 +1620,7 @@ function VistaArchivos(panes,titulo,origen){
     else if(c==='solo'){soloDif=!soloDif;revelados.clear();construir();pintarTodo();if(dsel>=0)centrar(al.bloques[dsel][0],true);}
     else if(c==='plegar')plegarTodo(true);else if(c==='desplegar')plegarTodo(false);
     else if(c==='opc')abrirOpciones();
-    else if(c==='valores')abrirValores(panes.map(function(p){return{nombre:p.nombre,clave:'',donde:'Panel '+p.letra+(p.ruta?' · '+p.ruta:''),texto:p.binario?null:p.lines.join('\n')};}),titulo);
+    else if(c==='valores'){var jj=al.cols[T.act][cur.r];abrirValores(fuentesValores(),titulo,jj>=0?{modo:PREF_V.modo,lineas:PREF_V.modo==='linea'?String(jj+1):''}:null);}
   });
   selBase.onchange=function(){T.base=+selBase.value;dsel=-1;recalc();irBloque(0,true);vp.focus();};
   inBusca.oninput=function(){busq=inBusca.value.toLowerCase();pedir();};
@@ -1665,6 +1668,7 @@ function VistaArchivos(panes,titulo,origen){
     if(N>2)it.push({t:'Copiar esta diferencia a todos',fn:function(){copiar(f,panes.map(function(a,g){return g;}));},dis:!enDif});
     it.push('-');
     if(bc){var ce=plegados.has(f+':'+bc.s);it.push({t:(ce?'Desplegar':'Plegar')+' bloque (líneas '+(bc.s+1)+'–'+(bc.e+1)+')',k:'Ctrl+Alt+F',fn:function(){alternar(f,bc.s);}});}
+    if(j>=0)it.push({t:'Sacar el valor de la línea '+(j+1)+' en todos los paneles',fn:function(){abrirValores(fuentesValores(),titulo,{modo:'linea',lineas:String(j+1)});}});
     it.push({t:'Usar '+p.letra+' como base',fn:function(){T.base=f;dsel=-1;recalc();irBloque(0,true);},dis:f===T.base});
     it.push({t:'Guardar panel '+p.letra,k:'Ctrl+S',fn:function(){guardar(f);},dis:!p.sucio});
     menu(e.clientX,e.clientY,it);
@@ -1845,7 +1849,7 @@ function VistaCarpetas(fuentes){
       '</div>'+
       '<div class="grp" style="margin-left:auto">'+
         '<input class="busca" data-c="busca" type="search" placeholder="Filtrar por nombre" spellcheck="false">'+
-        '<button class="btn" data-c="valores" title="Sacar el valor de una etiqueta <palabra>valor</palabra> de todos los archivos">Extraer valores</button>'+
+        '<button class="btn" data-c="valores" title="Sacar el valor <palabra>valor</palabra> de una misma línea (o de una palabra) en todos los archivos">Extraer valores</button>'+
         '<button class="btn" data-c="csv" title="Exportar el resultado a CSV (Excel)">Exportar</button>'+
         '<button class="btn" data-c="opc" title="Método, exclusiones y opciones de texto">Opciones</button>'+
       '</div>'+
@@ -2241,23 +2245,41 @@ function numero(v){
 function fmtNum(n){return(Math.round(n*1e6)/1e6).toLocaleString('es-ES',{maximumFractionDigits:6});}
 function colLetra(i){var s='';i++;while(i>0){var m=(i-1)%26;s=LETRAS[m]+s;i=Math.floor((i-1)/26);}return s;}
 
-function abrirValores(fuentesV,origen){
-  if(!fuentesV.length){toast('No hay archivos de donde sacar valores.',true);return;}
-  var t=VistaValores(fuentesV,origen);nuevaTab(t);return t;
+/* Valor de una línea con el formato <palabra>valor</palabra> (si hay varios en la línea, se juntan) */
+function valorLinea(s){
+  var re=/<([A-Za-z_][\w:.\-]*)(?:\s[^<>]*)?>([\s\S]*?)<\/\1\s*>/g,m,vals=[],tag=null;
+  while((m=re.exec(s))){if(!tag)tag=m[1];vals.push(decodEnt(m[2].trim()));}
+  if(!vals.length)return{tag:null,val:s.trim(),raw:true};
+  return{tag:tag,val:vals.join(' | ')};
 }
-var ultimaPalabra='';
-try{ultimaPalabra=localStorage.getItem('comparador.palabra')||'';}catch(e){}
-function VistaValores(fuentesV,origen){
+function numerosLinea(txt){
+  var out=[];
+  String(txt).split(/[;,\s]+/).forEach(function(p){
+    var m=/^(\d+)(?:-(\d+))?$/.exec(p);if(!m)return;
+    var a=+m[1],b=m[2]?+m[2]:a;if(b<a){var x=a;a=b;b=x;}
+    for(var i=Math.max(1,a);i<=b&&out.length<100;i++)if(out.indexOf(i)<0)out.push(i);
+  });
+  return out;
+}
+function abrirValores(fuentesV,origen,ini){
+  if(!fuentesV.length){toast('No hay archivos de donde sacar valores.',true);return;}
+  var t=VistaValores(fuentesV,origen,ini);nuevaTab(t);return t;
+}
+var PREF_V={modo:'linea',linea:'',palabra:''};
+try{Object.assign(PREF_V,JSON.parse(localStorage.getItem('comparador.valores')||'{}'));}catch(e){}
+function VistaValores(fuentesV,origen,ini){
   var T={tipo:'valores',titulo:'Valores · '+(origen||'archivos'),tip:'Valores extraídos de '+plural(fuentesV.length,'archivo','archivos')};
-  var textos=new Array(fuentesV.length),leidos=false,filasV=[],cab=[],selC=null,pals=[];
+  var textos=new Array(fuentesV.length),lineasV=new Array(fuentesV.length),leidos=false,filasV=[],cab=[],selC=null,pals=[],nums=[],tags=[];
+  var modoV=ini&&ini.modo||PREF_V.modo;
   var el=document.createElement('section');el.className='vista';el.hidden=true;
   el.innerHTML=
     '<div class="card toolbar" role="toolbar" aria-label="Extraer valores">'+
       '<div class="grp">'+
-        '<label class="lbl" style="display:flex;align-items:center;gap:8px">Palabra <input class="busca" data-c="pal" style="width:240px" spellcheck="false" placeholder="p. ej. precio · varias: precio;stock"></label>'+
-        '<button class="btn prim" data-c="ir" title="Buscar <palabra>valor</palabra> en todos los archivos (Intro)">Extraer</button>'+
+        '<label class="lbl" style="display:flex;align-items:center;gap:6px">Sacar por <select class="sel-in" data-c="por"><option value="linea">Número de línea</option><option value="palabra">Palabra</option></select></label>'+
+        '<input class="busca" data-c="pal" style="width:240px" spellcheck="false">'+
+        '<button class="btn prim" data-c="ir" title="Sacar el valor de <palabra>valor</palabra> en todos los archivos (Intro)">Extraer</button>'+
       '</div><span class="vsep"></span>'+
-      '<div class="grp">'+
+      '<div class="grp" data-g="pal">'+
         '<label class="lbl" style="display:flex;align-items:center;gap:6px">Si aparece varias veces <select class="sel-in" data-c="modo"><option value="filas">una fila por valor</option><option value="primero">solo el primero</option><option value="junto">todos en la misma celda</option></select></label>'+
         '<label class="chk" style="align-items:center"><input type="checkbox" data-c="may">Distinguir mayúsculas</label>'+
         '<label class="chk" style="align-items:center"><input type="checkbox" data-c="sin">Incluir archivos sin la palabra</label>'+
@@ -2267,12 +2289,26 @@ function VistaValores(fuentesV,origen){
         '<button class="btn" data-c="csv" title="Descargar la tabla en CSV">Exportar CSV</button>'+
       '</div>'+
     '</div>'+
-    '<div class="card xl" tabindex="0"><div class="vacio">Escribe la palabra de la etiqueta (lo que va entre &lt; y &gt;) y pulsa Extraer.<br>Se buscará en '+esc(plural(fuentesV.length,'archivo','archivos'))+'.</div></div>'+
+    '<div class="card xl" tabindex="0"><div class="vacio"></div></div>'+
     '<div class="estado"></div>';
   var q=function(s){return el.querySelector(s);};
-  var inP=q('[data-c=pal]'),xl=q('.xl'),est=q('.estado');
-  inP.value=ultimaPalabra;
+  var inP=q('[data-c=pal]'),selPor=q('[data-c=por]'),xl=q('.xl'),est=q('.estado');
   T.el=el;
+  function ponerModo(m){
+    modoV=m;selPor.value=m;
+    var lin=m==='linea';
+    inP.value=lin?(ini&&ini.lineas||PREF_V.linea):PREF_V.palabra;
+    inP.placeholder=lin?'p. ej. 12 · varias: 12;15;20-22':'p. ej. precio · varias: precio;stock';
+    q('[data-g=pal]').hidden=lin;
+    if(!filasV.length)xl.firstChild.innerHTML=lin?
+      'Escribe el número de línea donde está &lt;palabra&gt;valor&lt;/palabra&gt;: tiene que ser la misma línea en todos los archivos.<br>Se sacará el valor de esa línea en '+esc(plural(fuentesV.length,'archivo','archivos'))+'.':
+      'Escribe la palabra de la etiqueta (lo que va entre &lt; y &gt;) y pulsa Extraer.<br>Se buscará en todo el texto de '+esc(plural(fuentesV.length,'archivo','archivos'))+'.';
+  }
+  ponerModo(modoV);
+  function recordar(){
+    PREF_V.modo=modoV;if(modoV==='linea')PREF_V.linea=inP.value;else PREF_V.palabra=inP.value;
+    try{localStorage.setItem('comparador.valores',JSON.stringify(PREF_V));}catch(e){}
+  }
 
   async function leer(){
     if(leidos)return;
@@ -2292,12 +2328,13 @@ function VistaValores(fuentesV,origen){
     leidos=true;
   }
   async function ir(){
+    if(modoV==='linea')return irLinea();
     pals=inP.value.split(/[;,]/).map(function(x){return x.replace(/[<>\/\s]/g,'');}).filter(Boolean);
     if(!pals.length){toast('Escribe la palabra de la etiqueta, por ejemplo: precio');inP.focus();return;}
-    ultimaPalabra=inP.value;try{localStorage.setItem('comparador.palabra',ultimaPalabra);}catch(e){}
+    recordar();tags=[];
     await leer();
     var modo=q('[data-c=modo]').value,may=q('[data-c=may]').checked,sin=q('[data-c=sin]').checked;
-    cab=['Archivo','Dónde'].concat(pals);filasV=[];
+    cab=['Archivo','Dónde'].concat(pals.map(function(p){return'<'+p+'>';}));filasV=[];
     var conAlgo=0,ilegibles=0;
     fuentesV.forEach(function(f,i){
       var tx=textos[i];
@@ -2315,6 +2352,40 @@ function VistaValores(fuentesV,origen){
     s.push('Amarillo: el mismo archivo tiene otro valor en otra carpeta o panel');
     est.innerHTML=s.map(function(x){return'<span>'+x+'</span>';}).join('');
   }
+  /* Por número de línea: en cada archivo se lee esa misma línea y se saca lo que hay entre <palabra> y </palabra> */
+  async function irLinea(){
+    nums=numerosLinea(inP.value);
+    if(!nums.length){toast('Escribe el número de línea, por ejemplo: 12 (o varias: 12;15;20-22)');inP.focus();return;}
+    recordar();
+    await leer();
+    filasV=[];pals=nums.map(String);
+    var ilegibles=0,cortos=0,conVal=0;
+    fuentesV.forEach(function(f,i){
+      var tx=textos[i];
+      if(tx==null){ilegibles++;filasV.push({f:f,v:nums.map(function(){return null;}),t:[],nota:'no se pudo leer (binario o muy grande)'});return;}
+      var L=lineasV[i]||(lineasV[i]=tx.split(/\r\n|\n|\r/)),v=[],t=[],raw=[],algo=false;
+      nums.forEach(function(n,c){
+        if(n>L.length){v.push(null);t.push(null);raw.push(false);return;}
+        var x=valorLinea(L[n-1]);v.push(x.val);t.push(x.tag);raw.push(!!x.raw);if(!x.raw)algo=true;
+      });
+      if(algo)conVal++;
+      if(nums.some(function(n){return n>L.length;}))cortos++;
+      filasV.push({f:f,v:v,t:t,raw:raw,nl:L.length});
+    });
+    /* la etiqueta más repetida en cada línea da nombre a la columna */
+    tags=nums.map(function(n,c){
+      var m=new Map(),best=null,bn=0;
+      filasV.forEach(function(r){var g=r.t&&r.t[c];if(!g)return;var k=(m.get(g)||0)+1;m.set(g,k);if(k>bn){bn=k;best=g;}});
+      return best;
+    });
+    cab=['Archivo','Dónde'].concat(nums.map(function(n,c){return'Línea '+n+(tags[c]?' · <'+tags[c]+'>':'');}));
+    pintarHoja();
+    var s=['<b>'+conVal+'</b> de '+plural(fuentesV.length,'archivo','archivos')+' tienen &lt;palabra&gt;valor&lt;/palabra&gt; en '+(nums.length===1?'la línea '+nums[0]:'esas líneas')];
+    if(cortos)s.push('<span class="av">'+plural(cortos,'archivo más corto','archivos más cortos')+'</span>');
+    if(ilegibles)s.push(plural(ilegibles,'binario o ilegible','binarios o ilegibles'));
+    s.push('Amarillo: el mismo archivo tiene otro valor en otra carpeta o panel, o la línea trae otra etiqueta');
+    est.innerHTML=s.map(function(x){return'<span>'+x+'</span>';}).join('');
+  }
   function pintarHoja(){
     /* el amarillo compara el mismo archivo (misma ruta y misma aparición) entre carpetas o paneles */
     var nc=pals.length,moda=[],i,c;
@@ -2327,13 +2398,14 @@ function VistaValores(fuentesV,origen){
     }
     var h='<table class="hoja"><thead><tr><th class="rn"></th>';
     for(i=0;i<cab.length;i++)h+='<th class="cl">'+colLetra(i)+'</th>';
-    h+='</tr><tr><th class="rn">1</th>'+cab.map(function(x,i){return'<th data-c="'+i+'" data-r="0">'+(i>1?'&lt;'+esc(x)+'&gt;':esc(x))+'</th>';}).join('')+'</tr></thead><tbody>';
+    h+='</tr><tr><th class="rn">1</th>'+cab.map(function(x,i){return'<th data-c="'+i+'" data-r="0" title="'+esc(x)+'">'+esc(x)+'</th>';}).join('')+'</tr></thead><tbody>';
     var MAX=20000;
     filasV.slice(0,MAX).forEach(function(r,ri){
       h+='<tr><td class="rn">'+(ri+2)+'</td><td data-c="0" data-r="'+(ri+1)+'" title="'+esc(r.f.ruta||r.f.nombre)+'">'+esc(r.f.clave?r.f.ruta:r.f.nombre)+(r.mx>1?' <span class="cnt">('+(r.k+1)+'/'+r.mx+')</span>':'')+'</td><td data-c="1" data-r="'+(ri+1)+'" class="ub" title="'+esc(r.f.donde||'')+'">'+esc(r.f.donde||'')+'</td>';
       r.v.forEach(function(v,c){
-        if(v==null)h+='<td class="v aus" data-c="'+(c+2)+'" data-r="'+(ri+1)+'">'+(r.nota&&!c?esc(r.nota):'')+'</td>';
-        else{var gk=(r.f.clave||r.f.ruta||r.f.nombre)+'\u0000'+(r.k||0),mo=moda[c].get(gk);h+='<td class="v'+(mo?' dif':'')+(numero(v)!=null?' num':'')+'" data-c="'+(c+2)+'" data-r="'+(ri+1)+'" title="'+esc(v.length>80?v.slice(0,500):'')+'">'+esc(v.length>300?v.slice(0,300)+'…':v)+'</td>';}
+        if(v==null)h+='<td class="v aus" data-c="'+(c+2)+'" data-r="'+(ri+1)+'">'+(r.nota&&!c?esc(r.nota):r.nl!=null?'solo tiene '+r.nl+' líneas':'')+'</td>';
+        else if(r.raw&&r.raw[c])h+='<td class="v raw" data-c="'+(c+2)+'" data-r="'+(ri+1)+'" title="La línea '+esc(pals[c])+' no tiene el formato <palabra>valor</palabra>: se muestra tal cual">'+esc(v.length>300?v.slice(0,300)+'…':v||'(vacía)')+'</td>';
+        else{var gk=(r.f.clave||r.f.ruta||r.f.nombre)+'\u0000'+(r.k||0),mo=moda[c].get(gk)||(r.t&&tags[c]&&r.t[c]!==tags[c]);h+='<td class="v'+(mo?' dif':'')+(numero(v)!=null?' num':'')+'" data-c="'+(c+2)+'" data-r="'+(ri+1)+'" title="'+esc(r.t&&r.t[c]?'<'+r.t[c]+'> · '+v.slice(0,500):v.length>80?v.slice(0,500):'')+'">'+esc(v.length>300?v.slice(0,300)+'…':v)+'</td>';}
       });
       h+='</tr>';
     });
@@ -2349,7 +2421,7 @@ function VistaValores(fuentesV,origen){
     }
     xl.innerHTML=h+'</tr></tfoot></table>';selC=null;
   }
-  function tabla(){return[cab.map(function(x,i){return i>1?'<'+x+'>':x;})].concat(filasV.map(function(r){return[r.f.clave?r.f.ruta:r.f.nombre,r.f.donde||''].concat(r.v.map(function(v){return v==null?'':v;}));}));}
+  function tabla(){return[cab.slice()].concat(filasV.map(function(r){return[r.f.clave?r.f.ruta:r.f.nombre,r.f.donde||''].concat(r.v.map(function(v){return v==null?'':v;}));}));}
   function tsv(){return tabla().map(function(r){return r.map(function(v){v=String(v);return/[\t\n\r"]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join('\t');}).join('\r\n');}
   function copiarTodo(){
     if(!filasV.length){toast('Primero extrae algún valor.');return;}
@@ -2366,7 +2438,8 @@ function VistaValores(fuentesV,origen){
     }
   });
   inP.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();ir();}};
-  q('[data-c=modo]').onchange=q('[data-c=may]').onchange=function(){if(filasV.length||pals.length)ir();};
+  selPor.onchange=function(){filasV=[];cab=[];xl.innerHTML='<div class="vacio"></div>';est.innerHTML='';ponerModo(selPor.value);recordar();inP.focus();};
+  q('[data-c=modo]').onchange=q('[data-c=may]').onchange=q('[data-c=sin]').onchange=function(){if(filasV.length||pals.length)ir();};
   xl.addEventListener('mousedown',function(e){
     var td=e.target.closest('td[data-c],th[data-c]');if(!td)return;
     if(selC)selC.classList.remove('sel');selC=td;td.classList.add('sel');
@@ -2382,7 +2455,7 @@ function VistaValores(fuentesV,origen){
     }
     return false;
   };
-  T.mostrar=function(){setTimeout(function(){if(!el.hidden&&!filasV.length)inP.focus();},0);if(inP.value&&!filasV.length&&!pals.length)ir();};
+  T.mostrar=function(){setTimeout(function(){if(!el.hidden&&!filasV.length)inP.focus();},0);if(inP.value&&!filasV.length&&!pals.length&&(modoV==='linea'||ini))ir();};
   T.info=function(){return plural(fuentesV.length,'archivo','archivos')+(filasV.length?' · '+plural(filasV.length,'fila','filas'):'');};
   T.estadoPub=function(){return{filas:filasV,cab:cab,tsv:tsv};};
   return T;

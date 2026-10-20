@@ -2,8 +2,8 @@
 
 Una sola página HTML (`comparador.html`) que funciona como WinMerge, pero sin límite de dos o tres:
 compara **muchos archivos o muchas carpetas a la vez** (5, 10 o más), cada uno en su panel o columna.
-Pliega el código como Notepad++ y saca valores `<palabra>valor</palabra>` de todos los archivos
-a una tabla tipo Excel. No hace falta instalar nada: se abre con doble clic en Chrome, Edge o Firefox
+Pliega el código como Notepad++ y saca los valores `<palabra>valor</palabra>` de una misma
+línea de todos los archivos a una tabla tipo Excel. No hace falta instalar nada: se abre con doble clic en Chrome, Edge o Firefox
 y funciona sin internet.
 
 ## Cómo se usa
@@ -50,13 +50,19 @@ y funciona sin internet.
 
 ## Extraer valores (tipo Excel)
 
-Escribe la palabra de la etiqueta (por ejemplo `precio`) y saca lo que haya entre `<precio>` y
-`</precio>` (o `<precio>` de cierre) en **todos** los archivos: los de una comparación de carpetas,
-los paneles abiertos o directamente los elementos de Inicio, sin comparar.
+Saca el valor de las líneas con el formato `<palabra>valor</palabra>` de **todos** los archivos:
+los de una comparación de carpetas, los paneles abiertos o directamente los elementos de Inicio, sin comparar.
 
-- Sale en una hoja con filas y columnas como Excel: una fila por valor, hacia abajo. Varias palabras a la vez
-  separadas por `;` (`precio;stock;total`), cada una en su columna.
-- En amarillo los valores de un mismo archivo que cambian entre carpetas o paneles.
+- **Por número de línea** (lo normal): escribe la línea, por ejemplo `12`, que tiene que ser la misma
+  en todos los archivos. De cada archivo se lee esa línea y se saca lo que hay entre `<palabra>` y
+  `</palabra>`. La columna toma el nombre de la etiqueta (`Línea 12 · <precio>`). Varias líneas a la
+  vez: `12;15;20-22`, cada una en su columna. En la comparación de archivos, clic derecho en una
+  línea → «Sacar el valor de la línea N en todos los paneles».
+- **Por palabra**: escribe la palabra (por ejemplo `precio`) y busca `<precio>…</precio>` en todo el
+  texto, esté en la línea que esté.
+- Sale en una hoja con filas y columnas como Excel, una fila por archivo, hacia abajo.
+- En amarillo los valores de un mismo archivo que cambian entre carpetas o paneles, y las líneas que
+  traen otra etiqueta. Si la línea no tiene el formato, se muestra tal cual en gris.
 - Abajo, el resumen: cuántos valores, cuántos distintos y, si son números, suma, promedio, mínimo y máximo.
 - **Copiar para Excel** (se pega con Ctrl+V) o **Exportar CSV**.
 
