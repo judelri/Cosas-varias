@@ -4,10 +4,10 @@
 <meta name="author" content="judelri">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <!-- fin-cabecera (lo de arriba lo pone la publicación como Artifact) -->
-<title>Comparador de archivos y carpetas - E80 Group</title>
+<title>Comparador de archivos y carpetas</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
-/* Mismo lenguaje que el Generador de Dashboard y el Editor DXF: encabezado negro con la marca,
+/* Mismo lenguaje que el Generador de Dashboard y el Editor DXF: encabezado negro,
    fondo hueso, tarjetas blancas con borde fino y dorado como acento.
    Pestañas como WinMerge: una de inicio, una por cada comparación de carpetas o de archivos. */
 :root{
@@ -32,10 +32,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* Encabezado */
 header.top{background:var(--header-bg);color:var(--header-text);display:flex;align-items:center;gap:14px;height:64px;min-width:0;
   padding-left:max(28px,env(safe-area-inset-left,0px));padding-right:max(28px,env(safe-area-inset-right,0px))}
-header.top img{height:38px;width:auto;flex:none}
-.marca{font-weight:800;letter-spacing:1px;font-size:15px;white-space:nowrap}
 header.top .sep{width:1px;height:26px;background:rgba(255,255,255,.2);flex:none}
-.titulo{font-size:15px;color:var(--header-muted);white-space:nowrap}
+.titulo{font-size:16px;font-weight:600;color:var(--header-text);white-space:nowrap}
 .arch{margin-left:auto;display:flex;align-items:center;gap:10px;min-width:0}
 #hdrInfo{font:12px var(--mono);color:var(--header-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .chip{background:var(--accent);color:var(--on-accent);border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;white-space:nowrap}
@@ -262,14 +260,12 @@ dialog .fld{margin-bottom:12px}
   .btn kbd{display:none}
 }
 @media (max-width:640px){
-  header.top .sep,.titulo{display:none}
+  .titulo{font-size:14px}
 }
 @media (prefers-reduced-motion:no-preference){.btn,.tab{transition:border-color .12s,background-color .12s}}
 </style>
 
 <header class="top">
-  <!--marca--><img src="data:image/png;base64,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" alt="E80 Group"><span class="marca">E80 GROUP</span><!--/marca-->
-  <span class="sep"></span>
   <span class="titulo">Comparador de archivos y carpetas</span>
   <span class="arch"><span id="hdrInfo"></span><span class="chip" id="dirtyChip" hidden>Sin guardar</span></span>
 </header>
@@ -975,8 +971,14 @@ async function cerrarTab(t){
 addEventListener('beforeunload',function(e){if(tabs.some(function(t){return t.sucio&&t.sucio();})){e.preventDefault();e.returnValue='';}});
 
 /* ---------- Inicio: lista de elementos ---------- */
-var items=[];
+var items=[],cuantos=0;
+/* al añadir elementos se ordenan por nombre (LGV01, LGV02… LGV10 en orden numérico); subir/bajar sigue funcionando */
+function ordenarItems(){
+  items.sort(function(a,b){return a.nombre.localeCompare(b.nombre,'es',{numeric:true,sensitivity:'base'})||String(a.ruta||'').localeCompare(String(b.ruta||''),'es',{numeric:true});});
+}
 function pintarItems(){
+  if(items.length>cuantos)ordenarItems();
+  cuantos=items.length;
   var box=$('items');box.innerHTML='';
   items.forEach(function(it,i){
     var d=document.createElement('div');d.className='it';

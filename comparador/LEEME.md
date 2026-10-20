@@ -10,6 +10,8 @@ y funciona sin internet.
 
 1. En **Inicio**, añade archivos o carpetas (botones o arrastrándolos a la ventana). El primero
    es la base (A) contra la que se marcan las diferencias; se puede cambiar después.
+   - La lista se ordena sola por nombre, con los números en orden (LGV01, LGV02… LGV10), y así
+     salen los paneles y las columnas. Con las flechas ↑ ↓ se puede cambiar a mano.
    - **Varias carpetas**: eliges la carpeta que las contiene y marcas sus subcarpetas (vienen todas
      marcadas). También se pueden arrastrar varias carpetas juntas a la ventana.
    - Los botones para elegir archivos o carpetas se abren en **la última carpeta usada**, también al
