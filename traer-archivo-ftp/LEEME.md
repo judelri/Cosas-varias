@@ -12,8 +12,15 @@ numerada en el orden de las IP. No hace falta instalar nada para FTP: se abre co
    - **Servidores (IP)**: separadas por coma o una por línea. Para IP seguidas se escribe un rango:
      `192.168.1.101-120` (de la .101 a la .120) o `10.0.0.250-10.0.1.5`. Se respeta el orden en que
      se escriben; un rango al revés (`120-101`) va de mayor a menor.
-   - **Protocolo** y **Puerto** (21 para FTP, 22 para SFTP), **Usuario** y **Contraseña**, como en FileZilla.
-     Sin usuario se entra como anónimo.
+   - Si unas máquinas son FTP y otras SFTP, se escribe el protocolo delante, como en la barra de
+     FileZilla. Lo que no lo lleva usa el protocolo elegido abajo:
+     ```
+     192.168.1.101-110
+     sftp://192.168.1.120-125
+     ```
+     Un puerto distinto va detrás: `sftp://192.168.1.130:2222`.
+   - **Protocolo** y **Puerto** (21 para FTP, 22 para SFTP) para las IP sin protocolo delante,
+     **Usuario** y **Contraseña** (los mismos para todas), como en FileZilla. Sin usuario se entra como anónimo.
    - **Archivo remoto**: la ruta tal como se ve en FileZilla, p. ej. `/log/alarmas.txt`.
      Para varios archivos, separarlos con coma.
    - **Guardar en**: la carpeta de este PC.
@@ -45,11 +52,18 @@ días, crear una tarea en el **Programador de tareas** de Windows con:
 Cualquier dato se puede cambiar ahí mismo, p. ej.
 `-SinVentana -Ips 192.168.1.101-120 -Archivo /log/alarmas.txt`.
 
-## SFTP y FTPS implícito
+## SFTP (y FTPS implícito)
 
-Windows trae FTP y FTP con TLS explícito, pero no SFTP ni FTPS implícito. Para esos hace falta
-[WinSCP](https://winscp.net) (instalado, o la versión portable con `WinSCP.com` copiado junto a este
-script). Conectarse una vez a cada máquina con WinSCP para aceptar su clave; después se usa solo.
+Windows trae FTP y FTP con TLS explícito, pero no SFTP. Para SFTP hace falta [WinSCP](https://winscp.net),
+gratuito, en una versión reciente. Vale cualquiera de las dos:
+
+- Instalarlo normal, o
+- Bajar la versión portable ("Portable executables") y copiar `WinSCP.com` y `WinSCP.exe` en esta misma carpeta.
+
+La primera vez que se conecta a cada máquina SFTP acepta su clave SSH y la recuerda, igual que FileZilla
+cuando se marca "Confiar siempre". Si más adelante esa clave cambia (por ejemplo, se reinstaló la
+máquina), falla con "la clave SSH de la máquina no coincide": conectarse una vez a mano con WinSCP
+a esa IP y aceptar la clave nueva.
 
 ## Límites
 

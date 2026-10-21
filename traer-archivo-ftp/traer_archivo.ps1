@@ -78,10 +78,25 @@ function Numero-AIp([long]$n) {
     return '{0}.{1}.{2}.{3}' -f [math]::Floor($n / 16777216), ([math]::Floor($n / 65536) % 256), ([math]::Floor($n / 256) % 256), ($n % 256)
 }
 
-# '192.168.1.101-103, 10.0.0.5' -> 192.168.1.101, .102, .103, 10.0.0.5 (en el orden escrito, sin repetir)
-function Expandir-Ips($texto) {
+# '192.168.1.101-103, sftp://10.0.0.5' -> 192.168.1.101, .102, .103 con el protocolo elegido y 10.0.0.5 por SFTP
+# (en el orden escrito, sin repetir). Como en FileZilla, cada una puede llevar protocolo:// delante y :puerto detrás
+function Expandir-Ips($texto, $protocolo, $puerto) {
     $vistas = @{}
     foreach ($t in ($texto -split '[\s,;]+' | Where-Object { $_ })) {
+        $original = $t
+        $proto = $protocolo
+        $puertoT = $puerto
+        if ($t -match '^(ftp|ftpes|ftps|sftp)://(.+)$') {
+            $proto = $matches[1].ToLower()
+            $t = $matches[2].TrimEnd('/')
+            if ($proto -ne $protocolo) { $puertoT = $puertosPorDefecto[$proto] }
+        } elseif ($t -match '^\w*://') {
+            throw "Protocolo no válido en $original (se puede usar ftp://, ftpes://, ftps:// o sftp://)"
+        }
+        if ($t -match '^(.+):(\d{1,5})$') {
+            $t = $matches[1]
+            $puertoT = [int]$matches[2]
+        }
         if ($t -match '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.)(\d{1,3})-(\d{1,3})$') {
             $desde = Ip-ANumero ($matches[1] + $matches[2])
             $hasta = Ip-ANumero ($matches[1] + $matches[3])
@@ -92,29 +107,33 @@ function Expandir-Ips($texto) {
             $desde = Ip-ANumero $t
             $hasta = $desde
         } else {
-            if ($t -match '^[\d.]+-[\d.]*$') { throw "Rango no válido: $t (ejemplo: 192.168.1.101-120)" }
+            if ($t -match '^[\d.]+-[\d.]*$') { throw "Rango no válido: $original (ejemplo: 192.168.1.101-120)" }
             $desde = $null  # un nombre de equipo
         }
         if ($null -eq $desde) { $lista = @($t) }
         else {
-            if ([math]::Abs($hasta - $desde) -ge 1024) { throw "El rango $t tiene demasiadas IP" }
+            if ([math]::Abs($hasta - $desde) -ge 1024) { throw "El rango $original tiene demasiadas IP" }
             $paso = 1
             if ($hasta -lt $desde) { $paso = -1 }
             $lista = for ($n = $desde; $n -ne $hasta + $paso; $n += $paso) { Numero-AIp $n }
         }
         foreach ($ip in $lista) {
-            if (-not $vistas.ContainsKey($ip)) { $vistas[$ip] = $true; $ip }
+            $clave = "${ip}:$puertoT"
+            if (-not $vistas.ContainsKey($clave)) {
+                $vistas[$clave] = $true
+                [pscustomobject]@{ Ip = $ip; Protocolo = $proto; Puerto = $puertoT }
+            }
         }
     }
 }
 
 # Prueba todas las máquinas a la vez, para no esperar una por una a las apagadas
-function Probar-Conexion($ips, $puerto, $alEsperar) {
-    $intentos = foreach ($ip in $ips) {
+function Probar-Conexion($maquinas, $alEsperar) {
+    $intentos = foreach ($m in $maquinas) {
         $cliente = New-Object System.Net.Sockets.TcpClient
         $tarea = $null
-        try { $tarea = $cliente.ConnectAsync($ip, $puerto) } catch { }
-        [pscustomobject]@{ Ip = $ip; Cliente = $cliente; Tarea = $tarea }
+        try { $tarea = $cliente.ConnectAsync($m.Ip, $m.Puerto) } catch { }
+        [pscustomobject]@{ Clave = "$($m.Ip):$($m.Puerto)"; Cliente = $cliente; Tarea = $tarea }
     }
     $limite = (Get-Date).AddSeconds($Espera)
     while ((Get-Date) -lt $limite -and @($intentos | Where-Object { $_.Tarea -and -not $_.Tarea.IsCompleted }).Count) {
@@ -123,7 +142,7 @@ function Probar-Conexion($ips, $puerto, $alEsperar) {
     }
     $responde = @{}
     foreach ($i in $intentos) {
-        $responde[$i.Ip] = ($i.Tarea -and "$($i.Tarea.Status)" -eq 'RanToCompletion')
+        $responde[$i.Clave] = ($i.Tarea -and "$($i.Tarea.Status)" -eq 'RanToCompletion')
         $i.Cliente.Close()
     }
     $responde
@@ -169,9 +188,12 @@ function Bajar-WinScp($m, $remoto, $local) {
     if (-not $winscp) { throw "para $($m.Protocolo.ToUpper()) hace falta WinSCP (ver LEEME)" }
     $url = '{0}://{1}:{2}@{3}:{4}/' -f $m.Protocolo, [Uri]::EscapeDataString($m.Usuario),
         [Uri]::EscapeDataString('' + $m.Contrasena), $m.Servidor, $m.Puerto
+    # Como FileZilla: la clave SSH de una máquina nueva se acepta y se recuerda; si después cambia, falla
+    $clave = ''
+    if ($m.Protocolo -eq 'sftp') { $clave = ' -hostkey=acceptnew' }
     $orden = @(
         'option batch abort', 'option confirm off',
-        "open $url -timeout=$Espera",
+        "open $url -timeout=$Espera$clave",
         ('get -transfer=binary "{0}" "{1}"' -f $remoto.Replace('"', '""'), $local.Replace('"', '""')),
         'exit'
     )
@@ -181,6 +203,11 @@ function Bajar-WinScp($m, $remoto, $local) {
         # Usa la configuración normal de WinSCP, donde quedan las claves de servidor ya aceptadas
         $salida = & $winscp /script="$guion" 2>&1
         if ($LASTEXITCODE -ne 0) {
+            $texto = ($salida | ForEach-Object { "$_" }) -join ' '
+            if ($texto -match 'host key') { throw 'la clave SSH de la máquina no coincide con la de la vez anterior (ver LEEME)' }
+            if ($texto -match 'Authentication failed|Access denied|Authentication log') { throw 'usuario o contraseña incorrectos' }
+            if ($texto -match 'No such file|Can''t get attributes|Permission denied') { throw 'no existe el archivo o no hay permiso' }
+            if ($texto -match 'timed out|refused|Network error') { throw 'no responde (¿apagada o fuera de la red?)' }
             $ultima = ($salida | Where-Object { "$_".Trim() } | Select-Object -Last 1)
             throw "WinSCP: $ultima"
         }
@@ -215,7 +242,7 @@ function Nombre-Valido($texto) {
 
 # Recorre las máquinas en orden. $alAvisar recibe un texto de estado, $alTerminar cada resultado
 function Traer-Todo($cfg, $alAvisar, $alTerminar) {
-    $lista = @(Expandir-Ips $cfg.Ips)
+    $lista = @(Expandir-Ips $cfg.Ips $cfg.Protocolo $cfg.Puerto)
     $archivos = @($cfg.Archivo -split '[,;]' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
     if ($lista.Count -eq 0) { throw 'Falta escribir las IP de las máquinas.' }
     if ($archivos.Count -eq 0) { throw 'Falta escribir la ruta del archivo a traer.' }
@@ -229,14 +256,15 @@ function Traer-Todo($cfg, $alAvisar, $alTerminar) {
     $ancho = [math]::Max(2, ([string]$lista.Count).Length)
 
     & $alAvisar ('Probando la conexión con {0} máquina(s)...' -f $lista.Count)
-    $responde = Probar-Conexion $lista $cfg.Puerto { & $alAvisar $null }
+    $responde = Probar-Conexion $lista { & $alAvisar $null }
 
     $resultados = @()
     $n = 0
-    foreach ($ip in $lista) {
+    foreach ($maquina in $lista) {
         $n++
+        $ip = $maquina.Ip
         $m = [pscustomobject]@{
-            Servidor = $ip; Puerto = $cfg.Puerto; Protocolo = $cfg.Protocolo
+            Servidor = $ip; Puerto = $maquina.Puerto; Protocolo = $maquina.Protocolo
             Usuario = $usuario; Contrasena = $contrasena
         }
         foreach ($remoto in $archivos) {
@@ -245,7 +273,7 @@ function Traer-Todo($cfg, $alAvisar, $alTerminar) {
             $local = Join-Path $carpeta $copia
             $parcial = "$local.parcial"
             try {
-                if (-not $responde[$ip]) { throw 'no responde (¿apagada o fuera de la red?)' }
+                if (-not $responde["${ip}:$($m.Puerto)"]) { throw 'no responde (¿apagada o fuera de la red?)' }
                 if ($m.Protocolo -eq 'sftp' -or $m.Protocolo -eq 'ftps') { Bajar-WinScp $m $remoto $parcial }
                 else { Bajar-Ftp $m $remoto $parcial }
                 Move-Item -LiteralPath $parcial -Destination $local -Force
@@ -258,7 +286,7 @@ function Traer-Todo($cfg, $alAvisar, $alTerminar) {
                 $copia = ''
             }
             $r = [pscustomobject]@{
-                Numero = $n; IP = $ip; Archivo = $remoto; Resultado = $estado; Detalle = $detalle; Copia = $copia
+                Numero = $n; IP = $ip; Protocolo = $m.Protocolo.ToUpper(); Archivo = $remoto; Resultado = $estado; Detalle = $detalle; Copia = $copia
             }
             $resultados += $r
             & $alTerminar $r
@@ -339,7 +367,7 @@ $cajaIps.Multiline = $true
 $cajaIps.ScrollBars = 'Vertical'
 $cajaIps.Height = 48
 $cajaIps.Anchor = $arriba
-$ayuda = Nueva-Etiqueta 'Separadas por coma o una por línea. Rangos: 192.168.1.101-120' 130 62
+$ayuda = Nueva-Etiqueta 'Separadas por coma o una por línea. Rangos: 192.168.1.101-120. Otro protocolo: sftp://192.168.1.120-125' 130 62
 $ayuda.ForeColor = [System.Drawing.Color]::Gray
 
 $codigos = @('ftp', 'ftpes', 'ftps', 'sftp')
@@ -397,9 +425,10 @@ $tabla.Size = New-Object System.Drawing.Size(736, 290)
 $tabla.Anchor = [System.Windows.Forms.AnchorStyles]'Top, Bottom, Left, Right'
 [void]$tabla.Columns.Add('N°', 45)
 [void]$tabla.Columns.Add('IP', 120)
-[void]$tabla.Columns.Add('Archivo', 150)
+[void]$tabla.Columns.Add('Protocolo', 65)
+[void]$tabla.Columns.Add('Archivo', 140)
 [void]$tabla.Columns.Add('Resultado', 70)
-[void]$tabla.Columns.Add('Detalle', 330)
+[void]$tabla.Columns.Add('Detalle', 275)
 $ventana.Controls.Add($tabla)
 
 $script:ultimaCarpeta = $null
@@ -450,6 +479,7 @@ $botonTraer.Add_Click({
             param($r)
             $fila = New-Object System.Windows.Forms.ListViewItem([string]$r.Numero)
             [void]$fila.SubItems.Add($r.IP)
+            [void]$fila.SubItems.Add($r.Protocolo)
             [void]$fila.SubItems.Add(($r.Archivo -split '/')[-1])
             [void]$fila.SubItems.Add($r.Resultado)
             $texto = $r.Detalle
