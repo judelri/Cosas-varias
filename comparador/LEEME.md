@@ -6,6 +6,9 @@ Pliega el código como Notepad++ y saca los valores `<palabra>valor</palabra>` d
 línea de todos los archivos a una tabla tipo Excel. No hace falta instalar nada: se abre con doble clic en Chrome, Edge o Firefox
 y funciona sin internet.
 
+El manual de usuario, con capturas, está en **`Manual_Comparador.pdf`**. Se genera desde
+`manual/manual.html` con `node manual/generar_pdf.cjs`.
+
 ## Aplicación para Windows (Comparador.exe)
 
 `Comparador.exe` es la misma herramienta como programa de Windows: un solo archivo de unos 3 MB,
