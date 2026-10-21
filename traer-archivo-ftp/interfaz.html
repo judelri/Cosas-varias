@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="author" content="judelri">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Traer archivos - E80 Group</title>
+<style>
+/* Mismo lenguaje que el Editor DXF y el Generador de Dashboard: encabezado negro con la marca,
+   fondo hueso, tarjetas blancas con borde fino y dorado como acento. */
+:root{
+  --bg:#f6f5f1;--surface:#ffffff;--surface2:#eeece4;--border:rgba(20,20,22,.12);--border-strong:rgba(20,20,22,.35);
+  --text:#15171c;--muted:#6b6f7a;--accent:#eab308;--accent-ink:#8a6d00;--accent-soft:#fdf6dc;--on-accent:#1a1400;
+  --ok:#1f8a5b;--ok-soft:#e5f3ec;--danger:#c0392b;--danger-soft:#f9e6e3;--header-bg:#14161c;--header-text:#f5f5f2;--header-muted:#9a9da6;
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  color-scheme:light;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.4}
+button,input,select,textarea{font:inherit;color:inherit}
+
+header.top{background:var(--header-bg);color:var(--header-text);display:flex;align-items:center;gap:14px;height:64px;min-width:0;padding:0 28px}
+header.top img{height:38px;width:auto;flex:none}
+.marca{font-weight:800;letter-spacing:1px;font-size:15px;white-space:nowrap}
+header.top .sep{width:1px;height:26px;background:rgba(255,255,255,.2);flex:none}
+.titulo{font-size:15px;color:var(--header-muted);white-space:nowrap}
+.btn.salir{margin-left:auto;background:transparent;color:var(--header-muted);border-color:rgba(255,255,255,.2)}
+.btn.salir:hover{color:var(--header-text);border-color:rgba(255,255,255,.45)}
+
+main{max-width:1180px;margin:0 auto;padding:20px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.grupos{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+h2{font-size:14px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.tag{font:700 11px var(--font);letter-spacing:.5px;border-radius:999px;padding:2px 9px;background:var(--surface2);color:var(--text)}
+.tag.sftp{background:var(--accent);color:var(--on-accent)}
+.cuenta{margin-left:auto;font:12px var(--mono);color:var(--muted);font-weight:400}
+.sub{margin:6px 0 0;color:var(--muted);font-size:12px;line-height:1.45}
+.sub code{font:12px var(--mono);color:var(--text)}
+.campos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;margin-top:12px}
+.campos.tres{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 92px}
+.fld{display:grid;gap:5px;min-width:0}
+.fld>span:not(.inline){font-size:12px;font-weight:600}
+.fld>span i{font-style:normal;font-weight:400;color:var(--muted)}
+.fld input,.fld select,textarea{width:100%;min-width:0;height:36px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:#fff}
+.fld input,textarea{font-family:var(--mono);font-size:13px}
+textarea{height:92px;padding:8px 10px;resize:vertical;line-height:1.5}
+input::placeholder,textarea::placeholder{color:#a3a6ae}
+.aviso{margin-top:12px;border-radius:8px;background:var(--accent-soft);border:1px solid rgba(234,179,8,.45);padding:8px 12px;font-size:12px;line-height:1.45}
+
+.traer{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:10px 12px;align-items:end}
+.inline{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.acciones{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 14px;border:1px solid var(--border);
+  background:var(--surface);border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--border-strong)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.oro{background:var(--accent);color:var(--on-accent);border-color:var(--accent);height:40px;padding:0 20px;font-size:14px}
+.btn.oro:hover{background:#d9a406;border-color:#d9a406}
+.btn svg{width:16px;height:16px;flex:none}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(234,179,8,.25)}
+.estado{font-size:13px;color:var(--muted);min-width:0}
+.barra{height:4px;border-radius:2px;background:var(--surface2);overflow:hidden;margin-top:14px}
+.barra>i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+
+.res-cab{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:10px}
+.res-cab h2{margin:0}
+.res-cab .carpeta{font:12px var(--mono);color:var(--muted);overflow-wrap:anywhere}
+.cifras{margin-left:auto;display:flex;gap:6px}
+.chip{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}
+.chip.mal{background:var(--danger-soft);color:var(--danger)}
+.tabla{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.n,td.ip,td.copia{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.n{color:var(--muted)}
+td.det{color:var(--muted);overflow-wrap:anywhere}
+.peso{font-family:var(--font);color:var(--muted);margin-left:10px}
+tr.mal td.det{color:var(--danger)}
+.vacio{color:var(--muted);font-size:13px;text-align:center;padding:26px 10px}
+
+.cortina{position:fixed;inset:0;background:rgba(20,22,28,.6);display:grid;place-items:center;z-index:5;padding:16px}
+.cortina .card{max-width:420px;text-align:center}
+.cortina p{margin:6px 0 0;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:var(--danger);color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;
+  box-shadow:0 6px 24px rgba(20,20,22,.18);max-width:calc(100vw - 32px);z-index:6}
+
+@media (max-width:860px){
+  .grupos,.traer{grid-template-columns:minmax(0,1fr)}
+  header.top{padding:0 16px}
+  main{padding:16px}
+}
+@media (max-width:560px){
+  header.top .sep,.titulo{display:none}
+  .campos,.campos.tres{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .campos.tres .fld:last-child{grid-column:1/-1}
+  .btn.oro{flex:1 1 100%}
+}
+</style>
+
+<header class="top">
+  <!--marca--><img src="data:image/png;base64,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" alt="E80 Group"><span class="marca">E80 GROUP</span><!--/marca-->
+  <span class="sep"></span>
+  <span class="titulo">Traer archivos de las máquinas</span>
+  <button class="btn salir" id="salir" type="button" title="Termina el programa">Cerrar</button>
+</header>
+
+<main>
+  <div class="grupos">
+    <section class="card" aria-labelledby="tFtp">
+      <h2 id="tFtp"><span class="tag">FTP</span> Máquinas FTP <span class="cuenta" id="cuentaFtp"></span></h2>
+      <label class="fld"><span>IP <i>· una por línea o separadas por coma</i></span>
+        <textarea id="ftpIps" spellcheck="false" placeholder="192.168.1.101-120&#10;192.168.1.150"></textarea></label>
+      <p class="sub">Rangos seguidos: <code>192.168.1.101-120</code>. Otro puerto: <code>192.168.1.130:2121</code></p>
+      <div class="campos">
+        <label class="fld"><span>Usuario <i>· vacío = anónimo</i></span><input id="ftpUsuario" autocomplete="off" spellcheck="false"></label>
+        <label class="fld"><span>Contraseña</span><input id="ftpContrasena" type="password" autocomplete="new-password"></label>
+        <label class="fld"><span>Cifrado</span>
+          <select id="ftpCifrado">
+            <option value="ftp">Sin cifrar (FTP normal)</option>
+            <option value="ftpes">TLS explícito</option>
+            <option value="ftps">TLS implícito (necesita WinSCP)</option>
+          </select></label>
+        <label class="fld"><span>Puerto</span><input id="ftpPuerto" inputmode="numeric" value="21"></label>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="tSftp">
+      <h2 id="tSftp"><span class="tag sftp">SFTP</span> Máquinas SFTP <span class="cuenta" id="cuentaSftp"></span></h2>
+      <label class="fld"><span>IP <i>· una por línea o separadas por coma</i></span>
+        <textarea id="sftpIps" spellcheck="false" placeholder="192.168.1.201-210"></textarea></label>
+      <p class="sub">Mismo formato que en FTP. Usuario y contraseña propios de las SFTP.</p>
+      <div class="campos tres">
+        <label class="fld"><span>Usuario</span><input id="sftpUsuario" autocomplete="off" spellcheck="false"></label>
+        <label class="fld"><span>Contraseña</span><input id="sftpContrasena" type="password" autocomplete="new-password"></label>
+        <label class="fld"><span>Puerto</span><input id="sftpPuerto" inputmode="numeric" value="22"></label>
+      </div>
+      <div class="aviso" id="sinWinScp" hidden>Para SFTP hace falta <b>WinSCP</b> (gratis): instálalo o copia
+        <code>WinSCP.com</code> y <code>WinSCP.exe</code> junto a este programa. Las FTP funcionan igual sin él.</div>
+    </section>
+  </div>
+
+  <section class="card" aria-label="Qué traer">
+    <div class="traer">
+      <label class="fld"><span>Archivo en las máquinas <i>· varios separados por coma</i></span>
+        <input id="archivo" spellcheck="false" placeholder="/log/alarmas.txt"></label>
+      <label class="fld"><span>Guardar en este PC</span>
+        <span class="inline"><input id="destino" spellcheck="false"><button class="btn" id="elegir" type="button">Elegir…</button></span></label>
+    </div>
+    <div class="acciones">
+      <button class="btn oro" id="traer" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+        Traer archivos</button>
+      <button class="btn" id="abrir" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        Abrir carpeta</button>
+      <span class="estado" id="estado" role="status"></span>
+    </div>
+    <div class="barra" id="barra" hidden><i></i></div>
+  </section>
+
+  <section class="card" aria-labelledby="tRes">
+    <div class="res-cab">
+      <h2 id="tRes">Resultado</h2>
+      <span class="carpeta" id="carpeta"></span>
+      <span class="cifras" id="cifras"></span>
+    </div>
+    <div class="tabla">
+      <table>
+        <thead><tr><th>N°</th><th>IP</th><th>Protocolo</th><th>Archivo</th><th>Resultado</th><th>Copia / motivo</th></tr></thead>
+        <tbody id="filas"><tr><td colspan="6" class="vacio">Todavía no se trajo nada.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<div class="cortina" id="cortina" hidden><div class="card"><b id="cortinaTitulo"></b><p id="cortinaTexto"></p></div></div>
+<div class="toast" id="toast" role="alert" hidden></div>
+
+<script>
+'use strict';
+// La página la sirve traer_archivo.ps1 en localhost; la dirección lleva una clave que pide en cada llamada
+const base = location.pathname.replace(/\/?$/, '/');
+const $ = id => document.getElementById(id);
+let total = 0, hechas = 0, bien = 0, mal = 0, trabajando = false;
+
+async function api(accion, datos) {
+  const r = await fetch(base + accion, datos === undefined ? {} : {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(datos)});
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+function avisar(texto) {
+  const t = $('toast');
+  t.textContent = texto; t.hidden = false;
+  clearTimeout(avisar.t); avisar.t = setTimeout(() => t.hidden = true, 6000);
+}
+
+function cortina(titulo, texto) {
+  $('cortinaTitulo').textContent = titulo; $('cortinaTexto').textContent = texto; $('cortina').hidden = false;
+}
+
+// Cuenta aproximada de máquinas por bloque, para ver de un vistazo si el rango está bien escrito
+function contar(texto) {
+  let n = 0;
+  for (let t of texto.split(/[\s,;]+/).filter(Boolean)) {
+    t = t.replace(/^[a-z]+:\/\//i, '').replace(/:\d+$/, '');
+    let m = t.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.)(\d{1,3})-(\d{1,3})$/);
+    if (m) { n += Math.abs(+m[3] - +m[2]) + 1; continue; }
+    m = t.match(/^(\d{1,3}(?:\.\d{1,3}){3})-(\d{1,3}(?:\.\d{1,3}){3})$/);
+    if (m) {
+      const num = ip => ip.split('.').reduce((a, b) => a * 256 + +b, 0);
+      n += Math.abs(num(m[2]) - num(m[1])) + 1; continue;
+    }
+    n++;
+  }
+  return n;
+}
+function actualizarCuentas() {
+  for (const g of ['ftp', 'sftp']) {
+    const n = contar($(g + 'Ips').value);
+    $('cuenta' + (g === 'ftp' ? 'Ftp' : 'Sftp')).textContent = n ? n + (n === 1 ? ' máquina' : ' máquinas') : '';
+  }
+}
+
+const puertos = {ftp: '21', ftpes: '21', ftps: '990'};
+$('ftpCifrado').addEventListener('change', () => {
+  if (['', '21', '990'].includes($('ftpPuerto').value.trim())) $('ftpPuerto').value = puertos[$('ftpCifrado').value];
+});
+$('ftpIps').addEventListener('input', actualizarCuentas);
+$('sftpIps').addEventListener('input', actualizarCuentas);
+
+async function cargar() {
+  const c = await api('config');
+  for (const [g, d] of [['ftp', c.Ftp], ['sftp', c.Sftp]]) {
+    $(g + 'Ips').value = d.Ips || '';
+    $(g + 'Usuario').value = d.Usuario || '';
+    $(g + 'Puerto').value = d.Puerto || '';
+    $(g + 'Contrasena').placeholder = d.HayContrasena ? '•••••• (guardada)' : '';
+  }
+  $('ftpCifrado').value = c.Ftp.Cifrado || 'ftp';
+  $('archivo').value = c.Archivo || '';
+  $('destino').value = c.Destino || '';
+  $('sinWinScp').hidden = c.WinScp;
+  actualizarCuentas();
+}
+
+function grupo(g) {
+  return {Ips: $(g + 'Ips').value, Usuario: $(g + 'Usuario').value, Contrasena: $(g + 'Contrasena').value, Puerto: $(g + 'Puerto').value};
+}
+
+function celda(fila, texto, clase) {
+  const td = document.createElement('td');
+  td.textContent = texto;
+  if (clase) td.className = clase;
+  fila.appendChild(td);
+  return td;
+}
+
+function agregarFila(r) {
+  const tb = $('filas');
+  if (hechas === 0) tb.textContent = '';
+  const ok = r.Resultado === 'OK';
+  const tr = document.createElement('tr');
+  if (!ok) tr.className = 'mal';
+  celda(tr, String(r.Numero).padStart(2, '0'), 'n');
+  celda(tr, r.IP, 'ip');
+  celda(tr, r.Protocolo);
+  celda(tr, r.Archivo.split('/').pop());
+  const chip = document.createElement('span');
+  chip.className = 'chip ' + (ok ? 'ok' : 'mal');
+  chip.textContent = ok ? 'OK' : 'Fallo';
+  celda(tr, '').appendChild(chip);
+  if (ok) {
+    const td = celda(tr, r.Copia, 'copia');
+    const peso = document.createElement('span');
+    peso.className = 'peso'; peso.textContent = r.Detalle; td.appendChild(peso);
+  } else celda(tr, r.Detalle, 'det');
+  tb.appendChild(tr);
+  hechas++; ok ? bien++ : mal++;
+  pintarCifras();
+}
+
+function pintarCifras() {
+  const c = $('cifras'); c.textContent = '';
+  if (bien) { const s = document.createElement('span'); s.className = 'chip ok'; s.textContent = bien + ' bien'; c.appendChild(s); }
+  if (mal) { const s = document.createElement('span'); s.className = 'chip mal'; s.textContent = mal + ' con fallo'; c.appendChild(s); }
+  $('barra').firstElementChild.style.width = total ? (100 * hechas / total) + '%' : '0';
+}
+
+function evento(ev) {
+  if (ev.tipo === 'inicio') { total = ev.total; $('carpeta').textContent = ev.carpeta; $('barra').hidden = false; }
+  else if (ev.tipo === 'estado') $('estado').textContent = ev.texto;
+  else if (ev.tipo === 'fila') agregarFila(ev.fila);
+  else if (ev.tipo === 'fin') {
+    $('estado').textContent = `Listo: ${ev.bien} bien, ${ev.fallos} con fallo. Resumen en resumen.csv`;
+    $('barra').hidden = true;
+  } else if (ev.tipo === 'error') { $('estado').textContent = ''; $('barra').hidden = true; avisar(ev.texto); }
+}
+
+$('traer').addEventListener('click', async () => {
+  if (trabajando) return;
+  trabajando = true; $('traer').disabled = true;
+  total = hechas = bien = mal = 0;
+  $('filas').innerHTML = '<tr><td colspan="6" class="vacio">Conectando…</td></tr>';
+  $('cifras').textContent = ''; $('carpeta').textContent = ''; $('estado').textContent = 'Empezando…';
+  const datos = {Ftp: {...grupo('ftp'), Cifrado: $('ftpCifrado').value}, Sftp: grupo('sftp'), Archivo: $('archivo').value, Destino: $('destino').value};
+  try {
+    // La respuesta llega línea a línea: una por cada máquina terminada
+    const r = await fetch(base + 'traer', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(datos)});
+    const lector = r.body.getReader(), dec = new TextDecoder();
+    let resto = '';
+    for (;;) {
+      const {value, done} = await lector.read();
+      if (done) break;
+      resto += dec.decode(value, {stream: true});
+      let i;
+      while ((i = resto.indexOf('\n')) >= 0) {
+        const linea = resto.slice(0, i); resto = resto.slice(i + 1);
+        if (linea.trim()) evento(JSON.parse(linea));
+      }
+    }
+    if (total === 0) $('filas').innerHTML = '<tr><td colspan="6" class="vacio">Todavía no se trajo nada.</td></tr>';
+    for (const g of ['ftp', 'sftp']) {
+      if ($(g + 'Contrasena').value) { $(g + 'Contrasena').value = ''; $(g + 'Contrasena').placeholder = '•••••• (guardada)'; }
+    }
+  } catch (e) {
+    cortina('Se perdió la conexión con el programa', 'Vuelve a abrir "Traer archivo.bat".');
+  } finally {
+    trabajando = false; $('traer').disabled = false;
+  }
+});
+
+$('abrir').addEventListener('click', async () => {
+  try { const r = await api('abrir', {}); if (r.error) avisar(r.error); } catch { avisar('No se pudo abrir la carpeta.'); }
+});
+
+$('elegir').addEventListener('click', async () => {
+  try {
+    const r = await api('elegir', {});
+    if (r.error) avisar(r.error); else if (r.destino) $('destino').value = r.destino;
+  } catch { avisar('No se pudo abrir el selector de carpetas.'); }
+});
+
+$('salir').addEventListener('click', async () => {
+  if (trabajando && !confirm('Todavía está trayendo archivos. ¿Cerrar igual?')) return;
+  try { await api('cerrar', {}); } catch {}
+  cortina('Programa cerrado', 'Ya puedes cerrar esta pestaña.');
+});
+
+// Avisa al programa que la página sigue abierta; si se cierra, el programa termina solo a los 5 minutos
+setInterval(() => { if (!trabajando) api('latido', {}).catch(() => cortina('El programa está cerrado', 'Vuelve a abrir "Traer archivo.bat".')); }, 30000);
+
+cargar().catch(() => cortina('El programa está cerrado', 'Vuelve a abrir "Traer archivo.bat".'));
+</script>
+</html>
