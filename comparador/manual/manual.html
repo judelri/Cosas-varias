@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<title>Manual del Comparador de archivos y carpetas</title>
+<style>
+/* Manual en PDF con la paleta del Comparador: cabecera negra, fondo hueso, tarjetas blancas y dorado de acento.
+   Se genera con generar_pdf.cjs (Chromium): página A4. */
+:root{
+  --bg:#f6f5f1;--surface:#ffffff;--surface2:#eeece4;--border:rgba(20,20,22,.12);--border-strong:rgba(20,20,22,.35);
+  --text:#15171c;--muted:#6b6f7a;--accent:#eab308;--accent-ink:#8a6d00;--accent-soft:#fdf6dc;--on-accent:#1a1400;
+  --header-bg:#14161c;--header-text:#f5f5f2;--header-muted:#9a9da6;
+  --chg:#fff1bf;--chg-mark:#f2c230;--add:#e1f3e6;--eqd:#fcf9ee;
+  --hatch:repeating-linear-gradient(135deg,#ebe9e1 0 3px,#f7f6f2 3px 8px);
+  --font:Inter,"Segoe UI",system-ui,sans-serif;--mono:"JetBrains Mono","Cascadia Mono",Consolas,monospace;
+}
+@page{size:A4;margin:16mm 15mm 18mm}
+@page portada{margin:0}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html{background:#fff}
+body{margin:0;font:10pt/1.5 var(--font);color:var(--text);background:#fff}
+p{margin:0 0 8pt}
+b{font-weight:650}
+
+/* Portada */
+.portada{page:portada;height:297mm;display:grid;grid-template-rows:auto 1fr auto;background:var(--bg);break-after:page}
+.banda{background:var(--header-bg);color:var(--header-text);padding:30mm 20mm 22mm;position:relative}
+.banda::after{content:"";position:absolute;left:20mm;bottom:0;width:40mm;height:4px;background:var(--accent)}
+.banda img{width:26mm;height:26mm;display:block;margin-bottom:12mm}
+.banda .sup{font-size:10pt;letter-spacing:2px;text-transform:uppercase;color:var(--header-muted);font-weight:600;margin-bottom:4mm}
+.banda h1{font-size:30pt;line-height:1.1;margin:0 0 5mm;font-weight:750;letter-spacing:-.4px}
+.banda .lema{font-size:12.5pt;color:#d6d7db;max-width:140mm;margin:0}
+.indice{padding:16mm 20mm}
+.indice h2{font-size:10pt;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:0 0 6mm;font-weight:650}
+.indice ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:3.5mm 12mm}
+.indice li a{display:flex;gap:4mm;align-items:center;color:var(--text);text-decoration:none;font-weight:600;font-size:11pt}
+.indice li a span.n{width:8mm;height:8mm;border-radius:2mm;background:var(--header-bg);color:#fff;display:grid;place-items:center;font-size:9.5pt;flex:none}
+.pie{padding:0 20mm 14mm;display:flex;justify-content:space-between;font:8.5pt var(--mono);color:var(--muted)}
+
+/* Secciones */
+section{break-before:auto;margin-top:12mm}
+section.salto{break-before:page;margin-top:0}
+section.cont{break-before:auto;margin-top:10mm}
+h2.sec{display:flex;align-items:center;gap:4mm;font-size:15pt;font-weight:700;margin:0 0 5mm;padding:3.2mm 5mm;background:var(--header-bg);color:var(--header-text);border-radius:2.5mm;box-shadow:inset 0 -1.2mm 0 var(--accent);letter-spacing:-.1px;break-after:avoid}
+h2.sec .n{width:8.5mm;height:8.5mm;border-radius:2mm;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-size:11pt;font-weight:800;flex:none}
+h3{font-size:11.5pt;margin:6mm 0 2.5mm;font-weight:700;break-after:avoid}
+.lead{font-size:11pt;color:#2c2f38}
+ul,ol{margin:0 0 8pt;padding-left:6mm}
+li{margin:0 0 3pt}
+ol.pasos{list-style:none;padding:0;counter-reset:p}
+ol.pasos li{counter-increment:p;position:relative;padding-left:9mm;margin-bottom:4pt;break-inside:avoid}
+ol.pasos li::before{content:counter(p);position:absolute;left:0;top:.2mm;width:6mm;height:6mm;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:700;font-size:8.5pt;line-height:6mm;text-align:center}
+
+/* Tarjetas, capturas y tablas como en la app */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:3mm;overflow:hidden}
+figure{margin:0 0 6mm;break-inside:avoid}
+figure .card{padding:0;background:var(--bg)}
+figure img{display:block;width:100%}
+figcaption{font-size:8.5pt;color:var(--muted);margin-top:2mm}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:9.2pt;margin:0 0 6mm;background:var(--surface);box-shadow:0 0 0 3px var(--bg);border:1px solid var(--border);border-radius:3mm;overflow:hidden;break-inside:avoid}
+th{background:#f3f2ed;text-align:left;font-weight:650;color:var(--muted);font-size:8.5pt;text-transform:uppercase;letter-spacing:.5px;padding:2.4mm 3mm;border-bottom:1px solid var(--border)}
+td{padding:2.2mm 3mm;border-bottom:1px solid #efeee8;vertical-align:top}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600}
+code{font:8.8pt var(--mono);background:var(--surface2);border-radius:1mm;padding:.2mm 1.2mm}
+kbd{font:8.5pt var(--mono);border:1px solid var(--border-strong);border-bottom-width:2px;border-radius:1.2mm;padding:0 1.3mm;background:#fff;white-space:nowrap}
+.btn{display:inline-block;font-weight:650;font-size:8.8pt;border:1px solid var(--border-strong);border-radius:1.6mm;padding:0 2mm;background:#fff;white-space:nowrap}
+.btn.prim{background:var(--text);color:#fff;border-color:var(--text)}
+.sw{display:inline-block;width:9mm;height:4.5mm;border-radius:1mm;border:1px solid var(--border);vertical-align:-1mm;margin-right:2mm}
+.bd{font-size:8pt;font-weight:700;border-radius:99px;padding:.4mm 2.5mm;white-space:nowrap}
+.b-igual{background:#e3f3ea;color:#17714a}.b-distinto{background:#fff1bf;color:#7a5a00}.b-falta{background:#fbe4e1;color:#a5322a}
+.g{display:inline-grid;place-items:center;min-width:5mm;height:5mm;border-radius:2.5mm;color:#fff;font-size:8pt;font-weight:700;padding:0 1.2mm;vertical-align:-.8mm}
+.g0{background:#3b4250}.g1{background:#c58a00}.g2{background:#2f6fd0}
+.nota{background:var(--accent-soft);border:1px solid rgba(234,179,8,.45);border-left:4px solid var(--accent);border-radius:2mm;padding:3mm 4mm;margin:0 0 6mm;break-inside:avoid}
+.nota b:first-child{color:var(--accent-ink)}
+.arranque{break-inside:avoid}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:6mm}
+</style>
+
+<div class="portada">
+  <div class="banda">
+    <img src="../winres/icono256.png" alt="">
+    <div class="sup">Manual de usuario</div>
+    <h1>Comparador de archivos<br>y carpetas</h1>
+    <p class="lema">Compara muchos archivos o muchas carpetas a la vez, pliega el código como Notepad++ y saca los valores <span style="font-family:var(--mono)">&lt;palabra&gt;valor&lt;/palabra&gt;</span> a una hoja que se pega en Excel.</p>
+  </div>
+  <div class="indice">
+    <h2>Contenido</h2>
+    <ol>
+      <li><a href="#s1"><span class="n">1</span>Abrir el programa</a></li>
+      <li><a href="#s6"><span class="n">6</span>Extraer valores a Excel</a></li>
+      <li><a href="#s2"><span class="n">2</span>Inicio: elegir qué comparar</a></li>
+      <li><a href="#s7"><span class="n">7</span>Opciones</a></li>
+      <li><a href="#s3"><span class="n">3</span>Comparar archivos</a></li>
+      <li><a href="#s8"><span class="n">8</span>Atajos de teclado</a></li>
+      <li><a href="#s4"><span class="n">4</span>Plegado de código</a></li>
+      <li><a href="#s9"><span class="n">9</span>Problemas frecuentes</a></li>
+      <li><a href="#s5"><span class="n">5</span>Comparar carpetas</a></li>
+    </ol>
+  </div>
+  <div class="pie"><span>Comparador.exe · comparador.html</span><span>Octubre de 2026</span></div>
+</div>
+
+<section id="s1" style="break-before:auto;margin-top:0">
+  <div class="arranque"><h2 class="sec"><span class="n">1</span>Abrir el programa</h2>
+  <p class="lead">Hay dos formas de usarlo, con las mismas funciones. Ninguna necesita instalar nada ni conexión a internet.</p>
+  <table>
+    <tr><th style="width:24%">Forma</th><th>Cómo se abre</th><th style="width:34%">Cuándo usarla</th></tr>
+    <tr><td><code>Comparador.exe</code></td><td>Doble clic. Se abre en su propia ventana, maximizada.</td><td>En Windows 10 y 11: es lo normal.</td></tr>
+    <tr><td><code>comparador.html</code></td><td>Doble clic; se abre en Chrome, Edge o Firefox.</td><td>En otro sistema, o si el <code>.exe</code> no arranca.</td></tr>
+  </table></div>
+  <ul>
+    <li><b>Aviso «Windows protegió su PC»</b>: sale la primera vez porque el programa no lleva firma digital. Pulsa <b>Más información</b> y luego <b>Ejecutar de todas formas</b>.</li>
+    <li><b>Falta WebView2</b>: el <code>.exe</code> usa el motor de Microsoft Edge, que ya trae Windows. Si un equipo no lo tuviera, el programa avisa y ofrece instalarlo o abrir el comparador en el navegador.</li>
+    <li><b>Dónde guarda sus ajustes</b>: opciones, atajos y la última carpeta usada quedan en <code>%LOCALAPPDATA%\Comparador</code>. Se conservan al cerrar.</li>
+    <li><b>Al cerrar con cambios sin guardar</b>, el programa pregunta antes de salir.</li>
+  </ul>
+</section>
+
+<section id="s2" class="cont">
+  <div class="arranque"><h2 class="sec"><span class="n">2</span>Inicio: elegir qué comparar</h2>
+  <p class="lead">En Inicio se arma la lista de lo que se va a comparar y se pulsa <span class="btn prim">Comparar</span> (<kbd>Ctrl</kbd>+<kbd>Intro</kbd>). Hay que elegir dos o más archivos, o dos o más carpetas, sin mezclar unos con otras. No hay límite de cantidad.</p>
+  <figure><div class="card"><img src="inicio.png" alt=""></div><figcaption>Inicio con 13 carpetas en la lista, ordenadas solas de LGV01 a LGV13. Arriba a la derecha, Atajos y Opciones.</figcaption></figure></div>
+</section>
+<section class="cont" style="margin-top:0">
+  <table>
+    <tr><th style="width:26%">Botón</th><th>Para qué sirve</th></tr>
+    <tr><td><span class="btn">Añadir archivos</span></td><td>Elegir uno o varios archivos a la vez (<kbd>Ctrl</kbd>+<kbd>O</kbd>).</td></tr>
+    <tr><td><span class="btn">Añadir carpeta</span></td><td>Elegir una carpeta. Se repite para añadir más.</td></tr>
+    <tr><td><span class="btn">Varias carpetas</span></td><td>Elegir la carpeta que las contiene y marcar sus subcarpetas, todas de una vez.</td></tr>
+    <tr><td><span class="btn">Pegar texto</span></td><td>Pegar un texto copiado de otro sitio y compararlo como si fuera un archivo.</td></tr>
+    <tr><td><span class="btn">Extraer valores</span></td><td>Sacar valores <code>&lt;palabra&gt;valor&lt;/palabra&gt;</code> de la lista sin comparar (sección 6).</td></tr>
+    <tr><td><span class="btn">Ejemplo</span></td><td>Cargar tres versiones de un archivo o tres carpetas para probar.</td></tr>
+    <tr><td><span class="btn">Vaciar</span></td><td>Quitar todo de la lista.</td></tr>
+  </table>
+  <ul>
+    <li><b>Arrastrar y soltar</b>: también se pueden arrastrar archivos o varias carpetas juntas a la ventana.</li>
+    <li><b>Orden</b>: la lista se ordena sola por nombre, con los números en orden (LGV01, LGV02… LGV10). Las flechas ↑ ↓ cambian el orden a mano, pero al añadir otro elemento se vuelve a ordenar por nombre.</li>
+    <li><b>Letras y base</b>: cada elemento recibe una letra (A, B, C…), que es su panel o columna. El primero, en negro, es la <b>base</b>: las diferencias se marcan respecto a él. Se puede cambiar después.</li>
+    <li><b>Última carpeta</b>: los selectores se abren en la última carpeta usada, también otro día.</li>
+  </ul>
+  <figure style="width:62%;margin-left:auto;margin-right:auto"><div class="card"><img src="varias.png" alt=""></div><figcaption>Con «Varias carpetas» salen las subcarpetas, todas marcadas. Se desmarcan las que sobran y se pulsa Añadir.</figcaption></figure>
+</section>
+
+<section id="s3" class="salto">
+  <div class="arranque"><h2 class="sec"><span class="n">3</span>Comparar archivos</h2>
+  <p class="lead">Cada archivo se ve en su panel, lado a lado, y al bajar se mueven todos juntos. Las líneas quedan alineadas: lo que falta en un archivo se ve como un hueco rayado.</p>
+  <figure><div class="card"><img src="archivos.png" alt=""></div><figcaption>Tres versiones de inventario.js. A es la base; la barra de la derecha es el mapa de diferencias.</figcaption></figure></div>
+  <table>
+    <tr><th style="width:30%">Color</th><th>Qué significa</th></tr>
+    <tr><td><span class="sw" style="background:var(--chg)"></span>Amarillo</td><td>Línea cambiada respecto a la base. Lo más oscuro dentro de la línea es lo que cambió.</td></tr>
+    <tr><td><span class="sw" style="background:var(--add)"></span>Verde</td><td>Línea que existe en ese archivo y no en la base.</td></tr>
+    <tr><td><span class="sw" style="background:var(--hatch)"></span>Rayado</td><td>Hueco: ese archivo no tiene esa línea.</td></tr>
+    <tr><td><span class="sw" style="background:var(--eqd)"></span>Amarillo muy claro</td><td>La fila es diferente en otro panel, pero este panel es igual a la base.</td></tr>
+  </table>
+</section>
+<section class="cont" style="margin-top:0">
+  <h3>Moverse entre diferencias</h3>
+  <ul>
+    <li><span class="btn">Siguiente</span> y <span class="btn">Anterior</span> (<kbd>Alt</kbd>+<kbd>↓</kbd> / <kbd>Alt</kbd>+<kbd>↑</kbd>) saltan de una diferencia a otra. Los botones de los extremos van a la primera y a la última.</li>
+    <li>La barra de abajo dice en qué diferencia estás («Diferencia 2 de 8»), la línea, la codificación y el fin de línea del panel activo.</li>
+    <li><span class="btn">Solo diferencias</span> oculta las partes iguales y deja unas líneas de contexto. Un clic en «⋯ líneas iguales» las vuelve a mostrar.</li>
+    <li><b>Buscar</b> (<kbd>Ctrl</kbd>+<kbd>F</kbd>, siguiente con <kbd>F3</kbd>) busca en el panel activo; si no está ahí, en los demás.</li>
+  </ul>
+  <h3>Copiar diferencias y editar</h3>
+  <ol class="pasos">
+    <li>Haz clic en la diferencia, dentro del panel que tiene el texto bueno. Ese panel queda activo, marcado en amarillo arriba.</li>
+    <li>Pulsa <span class="btn">Copiar →</span> o <span class="btn">← Copiar</span> (<kbd>Alt</kbd>+<kbd>→</kbd> / <kbd>Alt</kbd>+<kbd>←</kbd>) para pasar ese bloque al panel de al lado, o <span class="btn">A todos</span> para pasarlo a todos.</li>
+    <li>Para cambiar una línea a mano, doble clic sobre ella (o <kbd>F2</kbd>), escribe y pulsa <kbd>Intro</kbd>.</li>
+    <li>Con el clic derecho hay más: insertar o borrar una línea, copiar la diferencia a un panel concreto o usar ese panel como base.</li>
+    <li><b>Deshacer</b> y <b>Rehacer</b> (<kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd>) deshacen cualquier cambio.</li>
+  </ol>
+  <p><b>Cambiar la base</b>: el desplegable <b>Base</b> de la barra, o doble clic en la cabecera de un panel.</p>
+  <div class="nota"><b>Guardar</b> (<kbd>Ctrl</kbd>+<kbd>S</kbd>) guarda los paneles cambiados, marcados con un ●. Si el archivo se abrió con los botones del programa, se escribe en el original; la primera vez Windows pide permiso. Cada archivo conserva su codificación (UTF-8, ANSI, UTF-16) y su fin de línea. Los textos pegados se descargan como archivo nuevo. Los binarios se muestran en hexadecimal y no se editan.</div>
+</section>
+
+<section id="s4">
+  <div class="arranque"><h2 class="sec"><span class="n">4</span>Plegado de código</h2>
+  <p class="lead">Como en Notepad++, los cuadritos del margen pliegan un bloque (⊟) o lo despliegan (⊞). Al plegar en un panel se pliega en todos a la vez, para que sigan alineados. Un bloque plegado deja su primera línea a la vista con un «⋯» al final.</p>
+  <figure><div class="card"><img src="plegado.png" alt=""></div><figcaption>Nivel 2 plegado con Alt+2: cada método queda en una línea con su ⊞ y su ⋯.</figcaption></figure></div>
+  <table>
+    <tr><th style="width:46%">Acción</th><th>Cómo</th></tr>
+    <tr><td>Plegar o desplegar un bloque</td><td>Clic en su cuadrito del margen.</td></tr>
+    <tr><td>Plegar todo / desplegar todo</td><td><kbd>Alt</kbd>+<kbd>0</kbd> / <kbd>Alt</kbd>+<kbd>Mayús</kbd>+<kbd>0</kbd>, o los botones ⊟ y ⊞ de la barra.</td></tr>
+    <tr><td>Plegar un nivel (1 = lo de fuera, 2 = lo de dentro…)</td><td><kbd>Alt</kbd>+<kbd>1</kbd> a <kbd>Alt</kbd>+<kbd>8</kbd>. Con <kbd>Mayús</kbd>, se despliega ese nivel.</td></tr>
+    <tr><td>Plegar el bloque donde está el cursor</td><td><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> (con <kbd>Mayús</kbd>, desplegarlo).</td></tr>
+  </table>
+  <p>Los bloques se detectan según el tipo de archivo. Se puede forzar uno en <b>Opciones → Plegado de código</b>.</p>
+  <table>
+    <tr><th style="width:42%">Tipo de archivo</th><th>Qué se pliega</th></tr>
+    <tr><td>C, C#, Java, JavaScript, JSON, CSS, PHP, Go…</td><td>Lo que va entre llaves <code>{ }</code> y corchetes <code>[ ]</code>, los comentarios largos y las zonas <code>#region</code>.</td></tr>
+    <tr><td>Python, YAML</td><td>Cada bloque por su sangría.</td></tr>
+    <tr><td>XML, HTML, XAML, .config, .csproj…</td><td>Cada etiqueta que ocupa varias líneas, y los comentarios.</td></tr>
+    <tr><td>Markdown, INI, TOML</td><td>Cada título o sección <code>[sección]</code> hasta la siguiente.</td></tr>
+  </table>
+</section>
+
+<section id="s5">
+  <div class="arranque"><h2 class="sec"><span class="n">5</span>Comparar carpetas</h2>
+  <p class="lead">Cada carpeta es una columna (A, B, C…) y cada fila es un archivo, con su tamaño y su fecha en cada carpeta. El número de color indica el contenido: <span class="g g0">1</span> <span class="g g1">2</span> <span class="g g2">3</span> los archivos con el mismo número son iguales entre sí. Así, con muchas carpetas se ve enseguida qué versiones coinciden.</p>
+  <figure><div class="card"><img src="carpetas.png" alt=""></div><figcaption>Tres carpetas en árbol. Rayado = el archivo no está en esa carpeta.</figcaption></figure></div>
+  <table>
+    <tr><th style="width:30%">Estado</th><th>Qué significa</th></tr>
+    <tr><td><span class="bd b-igual">Idénticos</span></td><td>El archivo está en todas las carpetas y es igual en todas.</td></tr>
+    <tr><td><span class="bd b-distinto">2 versiones</span></td><td>Está en todas, pero no es igual: hay dos contenidos distintos. «Todos distintos» = ninguno coincide.</td></tr>
+    <tr><td><span class="bd b-falta">Falta en B</span></td><td>No existe en esa carpeta (columna rayada).</td></tr>
+    <tr><td><span class="bd b-falta">Solo en C</span></td><td>Solo existe en una carpeta.</td></tr>
+    <tr><td><span class="bd b-distinto">Con diferencias</span></td><td>En una carpeta: algo de dentro es distinto o falta.</td></tr>
+  </table>
+</section>
+<section class="cont" style="margin-top:0">
+  <ul>
+    <li><b>Abrir un archivo</b>: doble clic en su fila; se compara en todas las carpetas que lo tienen. Para varios a la vez, selecciónalos con <kbd>Ctrl</kbd> o <kbd>Mayús</kbd> y pulsa <span class="btn prim">Comparar</span> (<kbd>Intro</kbd>): cada uno se abre en su pestaña.</li>
+    <li><b>Filtros</b>: <span class="btn">Idénticos</span> <span class="btn">Distintos</span> <span class="btn">Faltan</span> muestran u ocultan cada grupo, con su cantidad. <b>Filtrar por nombre</b> busca por nombre o ruta.</li>
+    <li><b>Árbol o lista</b>: el botón <span class="btn">Árbol</span> cambia entre ver las subcarpetas o una lista plana con la ruta de cada archivo. ⊞ y ⊟ expanden y contraen todas.</li>
+    <li><span class="btn">Copiar…</span> copia los archivos seleccionados de una carpeta a otras. Solo con carpetas añadidas con los botones del programa.</li>
+    <li><span class="btn">Exportar</span> guarda el resultado en un CSV para abrir en Excel.</li>
+    <li><span class="btn">Actualizar</span> (<kbd>F5</kbd>) vuelve a leer las carpetas, por ejemplo después de cambiar algo fuera del programa o en las opciones.</li>
+  </ul>
+  <div class="nota"><b>Tiempo:</b> comparar por contenido muchos archivos tarda unos segundos (3.000 archivos en 5 carpetas, unos 10 s). La barra de abajo muestra el avance y permite cancelar. Para ir más rápido: <b>Opciones → Método: Tamaño y fecha</b>.</div>
+</section>
+
+<section id="s6">
+  <div class="arranque"><h2 class="sec"><span class="n">6</span>Extraer valores a Excel</h2>
+  <p class="lead"><span class="btn">Extraer valores</span> saca lo que hay entre <code>&lt;palabra&gt;</code> y <code>&lt;/palabra&gt;</code> en todos los archivos y lo pone en una hoja tipo Excel, una fila por archivo. Se abre desde Inicio, desde una comparación de carpetas o desde una de archivos.</p>
+  <figure><div class="card"><img src="valores.png" alt=""></div><figcaption>Líneas 2 y 4 de los pedidos: el cliente y el total de cada archivo. En amarillo, el pedido 002, que cambia entre carpetas.</figcaption></figure></div>
+  <div class="dos">
+    <div>
+      <h3 style="margin-top:0">Por número de línea (lo normal)</h3>
+      <ol class="pasos">
+        <li>En <b>Sacar por</b>, deja <b>Número de línea</b>.</li>
+        <li>Escribe la línea donde está el valor, por ejemplo <code>12</code>. Tiene que ser la misma en todos los archivos. Varias a la vez: <code>12;15;20-22</code>, cada una en su columna.</li>
+        <li>Pulsa <span class="btn prim">Extraer</span> o <kbd>Intro</kbd>.</li>
+      </ol>
+      <p>Atajo: en una comparación de archivos, clic derecho en una línea → <b>Sacar el valor de la línea N en todos los paneles</b>.</p>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Por palabra</h3>
+      <p>En <b>Sacar por</b> elige <b>Palabra</b> y escribe la etiqueta, por ejemplo <code>precio</code>. Se busca en todo el texto, esté en la línea que esté. Si aparece varias veces en un archivo, se elige una fila por valor, solo el primero o todos juntos en la misma celda.</p>
+    </div>
+  </div>
+</section>
+<section class="cont" style="margin-top:0">
+  <h3>Cómo leer la hoja</h3>
+  <table>
+    <tr><th style="width:30%">Lo que ves</th><th>Qué significa</th></tr>
+    <tr><td>Título de la columna</td><td>Toma el nombre de la etiqueta: «Línea 4 · &lt;total&gt;».</td></tr>
+    <tr><td><span class="sw" style="background:var(--chg)"></span>Amarillo</td><td>El mismo archivo tiene otro valor en otra carpeta o panel, o esa línea trae otra etiqueta.</td></tr>
+    <tr><td><span class="sw" style="background:#fff"></span><i style="color:var(--muted)">Gris en cursiva</i></td><td>La línea no tiene el formato <code>&lt;palabra&gt;valor&lt;/palabra&gt;</code>; se muestra tal cual.</td></tr>
+    <tr><td><span class="sw" style="background:var(--hatch)"></span>«solo tiene N líneas»</td><td>El archivo es más corto que la línea pedida.</td></tr>
+    <tr><td>Fila Σ</td><td>Cuántos valores hay, cuántos distintos y, si son números, suma, promedio, mínimo y máximo.</td></tr>
+  </table>
+  <h3>Pasarlo a Excel</h3>
+  <ul>
+    <li><span class="btn">Copiar para Excel</span> copia solo los valores, uno debajo de otro y sin huecos, sin títulos ni nombres de archivo. En Excel se pega con <kbd>Ctrl</kbd>+<kbd>V</kbd>.</li>
+    <li><span class="btn">Exportar CSV</span> guarda la tabla completa, con archivo, carpeta y valores.</li>
+    <li>Un clic en una celda la selecciona; <kbd>Ctrl</kbd>+<kbd>C</kbd> copia solo esa celda.</li>
+  </ul>
+  <div class="nota"><b>Decimales:</b> Excel en español usa coma, así que los números se copian con coma decimal (<code>-119,1148</code>). Con punto, Excel leería <code>-119.1148</code> como un número enorme. Si el Excel está en inglés, elige <b>con punto</b>; <b>tal cual</b> no cambia nada.</div>
+</section>
+
+<section id="s7">
+  <div class="arranque"><h2 class="sec"><span class="n">7</span>Opciones</h2>
+  <p class="lead">El botón <span class="btn">Opciones</span>, arriba a la derecha, está en todas las pestañas. Los cambios se guardan en el equipo y se aplican al momento en la comparación abierta; en las carpetas, al pulsar <span class="btn">Actualizar</span>.</p>
+  <table>
+    <tr><th style="width:27%">Opción</th><th>Qué hace</th><th style="width:22%">De fábrica</th></tr>
+    <tr><td>Espacios en blanco</td><td>Tenerlos en cuenta, ignorar cambios de cantidad (dos espacios = uno) o ignorarlos todos.</td><td>Tenerlos en cuenta</td></tr>
+    <tr><td>Ignorar mayúsculas y minúsculas</td><td>«Precio» y «precio» cuentan como iguales.</td><td>No</td></tr>
+    <tr><td>Ignorar el tipo de fin de línea</td><td>Un archivo de Windows (CRLF) y uno de Unix (LF) con el mismo texto cuentan como iguales.</td><td>Sí</td></tr>
+    <tr><td>Ignorar líneas en blanco</td><td>Las diferencias que son solo líneas vacías no cuentan.</td><td>No</td></tr>
+    <tr><td>Resaltar dentro de la línea</td><td>Marcar lo que cambió por palabras completas o letra a letra.</td><td>Palabras</td></tr>
+    <tr><td>Cómo detectar los bloques</td><td>Automático por extensión, o forzar llaves, sangría, etiquetas, títulos o sin plegado.</td><td>Automático</td></tr>
+    <tr><td>Líneas de contexto</td><td>Cuántas líneas iguales quedan a la vista alrededor de cada diferencia en «Solo diferencias».</td><td>3</td></tr>
+    <tr><td>Método (carpetas)</td><td>Por contenido (aplica las opciones de texto), por tamaño y fecha, o solo por tamaño.</td><td>Contenido</td></tr>
+    <tr><td>Excluir (carpetas)</td><td>Nombres que no se miran, separados por <code>;</code>. Admite <code>*</code> y <code>?</code>.</td><td><code>.git</code>, <code>node_modules</code>, <code>Thumbs.db</code>…</td></tr>
+    <tr><td>Incluir solo (carpetas)</td><td>Si se rellena, solo se miran esos archivos, por ejemplo <code>*.xml;*.txt</code>.</td><td>Vacío (todos)</td></tr>
+  </table></div>
+</section>
+
+<section id="s8">
+  <div class="arranque"><h2 class="sec"><span class="n">8</span>Atajos de teclado</h2>
+  <p class="lead">Todos los atajos se pueden cambiar con el botón <span class="btn">Atajos</span>, arriba a la derecha. La tabla muestra los de fábrica.</p>
+  <table>
+    <tr><th>Acción</th><th style="width:44%">Atajo de fábrica</th></tr>
+    <tr><td>Diferencia siguiente / anterior</td><td><kbd>Alt</kbd>+<kbd>↓</kbd> / <kbd>Alt</kbd>+<kbd>↑</kbd></td></tr>
+    <tr><td>Primera / última diferencia</td><td><kbd>Alt</kbd>+<kbd>Inicio</kbd> / <kbd>Alt</kbd>+<kbd>Fin</kbd></td></tr>
+    <tr><td>Copiar la diferencia a la derecha / izquierda</td><td><kbd>Alt</kbd>+<kbd>→</kbd> / <kbd>Alt</kbd>+<kbd>←</kbd></td></tr>
+    <tr><td>Copiar la diferencia a todos los paneles</td><td style="color:var(--muted)">sin atajo</td></tr>
+    <tr><td>Solo diferencias</td><td style="color:var(--muted)">sin atajo</td></tr>
+    <tr><td>Editar la línea</td><td><kbd>F2</kbd> (o doble clic)</td></tr>
+    <tr><td>Guardar / deshacer / rehacer</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd> / <kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td></tr>
+    <tr><td>Plegar todo / desplegar todo</td><td><kbd>Alt</kbd>+<kbd>0</kbd> / <kbd>Alt</kbd>+<kbd>Mayús</kbd>+<kbd>0</kbd></td></tr>
+    <tr><td>Plegar / desplegar el bloque actual</td><td><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> / <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Mayús</kbd>+<kbd>F</kbd></td></tr>
+    <tr><td>Plegar / desplegar un nivel (fijo)</td><td><kbd>Alt</kbd>+<kbd>1…8</kbd> / <kbd>Alt</kbd>+<kbd>Mayús</kbd>+<kbd>1…8</kbd></td></tr>
+    <tr><td>Buscar / siguiente / anterior</td><td><kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>F3</kbd> / <kbd>Mayús</kbd>+<kbd>F3</kbd></td></tr>
+    <tr><td>Volver a leer y comparar</td><td><kbd>F5</kbd></td></tr>
+    <tr><td>Comparar (en Inicio)</td><td><kbd>Ctrl</kbd>+<kbd>Intro</kbd></td></tr>
+    <tr><td>Añadir archivos (en Inicio)</td><td><kbd>Ctrl</kbd>+<kbd>O</kbd></td></tr>
+  </table></div>
+</section>
+<section class="cont" style="margin-top:0">
+  <figure style="width:78%;margin-left:auto;margin-right:auto"><div class="card"><img src="atajos.png" alt=""></div><figcaption>La ventana Atajos, agrupada en Navegar, Copiar y editar, Plegado, Buscar y General.</figcaption></figure>
+  <h3>Cambiar un atajo</h3>
+  <ol class="pasos">
+    <li>Pulsa <span class="btn">Atajos</span> y haz clic en la combinación que quieres cambiar. Pondrá «Pulsa la combinación…».</li>
+    <li>Pulsa las teclas nuevas, por ejemplo <kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>J</kbd>. Queda guardado al momento.</li>
+    <li><kbd>Supr</kbd> deja la acción sin atajo y <kbd>Esc</kbd> cancela. La flecha circular de la fila vuelve al de fábrica; <span class="btn">Restaurar todos</span> vuelve todos.</li>
+  </ol>
+  <p>Si la combinación ya era de otra acción, el programa avisa y se la quita a esa. Los textos de ayuda de los botones y del clic derecho muestran siempre el atajo elegido.</p>
+</section>
+
+<section id="s9">
+  <h2 class="sec"><span class="n">9</span>Problemas frecuentes</h2>
+  <table>
+    <tr><th style="width:40%">Problema</th><th>Solución</th></tr>
+    <tr><td>Sale «Windows protegió su PC» al abrir el <code>.exe</code>.</td><td>Pulsa <b>Más información</b> → <b>Ejecutar de todas formas</b>. Pasa porque el programa no está firmado.</td></tr>
+    <tr><td>El <code>.exe</code> avisa de que falta WebView2.</td><td>Acepta para instalarlo desde Microsoft, o elige abrir el comparador en el navegador.</td></tr>
+    <tr><td>Al pegar en Excel, los números salen enormes (<code>-119.114.888…</code>).</td><td>En <b>Extraer valores</b>, pon <b>Decimales: con coma</b>.</td></tr>
+    <tr><td>El botón <span class="btn prim">Comparar</span> está gris.</td><td>Hacen falta al menos dos elementos, y que sean todos archivos o todas carpetas.</td></tr>
+    <tr><td>Al guardar se descarga una copia en vez de cambiar el original.</td><td>Pasa con textos pegados, en Firefox o con carpetas añadidas de otra forma. Abre los archivos con «Añadir archivos» o «Añadir carpeta».</td></tr>
+    <tr><td><span class="btn">Copiar…</span> entre carpetas no está disponible.</td><td>Añade las carpetas con «Añadir carpeta» o «Varias carpetas»: así el programa puede escribir en ellas.</td></tr>
+    <tr><td>Comparar muchas carpetas tarda.</td><td>Es normal: lee cada archivo. Usa <b>Opciones → Método: Tamaño y fecha</b>, o excluye las carpetas que no hagan falta.</td></tr>
+    <tr><td>Dos archivos iguales salen como distintos.</td><td>Revisa las opciones de espacios, mayúsculas y fin de línea: sin ellas, un espacio de más ya es una diferencia.</td></tr>
+    <tr><td>Se perdió el orden puesto a mano en la lista.</td><td>Al añadir un elemento, la lista se ordena por nombre. Usa las flechas ↑ ↓ después de añadir todo.</td></tr>
+  </table>
+</section>
+</html>
