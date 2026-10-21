@@ -2442,7 +2442,22 @@ function abrirValores(fuentesV,origen,ini){
   if(!fuentesV.length){toast('No hay archivos de donde sacar valores.',true);return;}
   var t=VistaValores(fuentesV,origen,ini);nuevaTab(t);return t;
 }
-var PREF_V={modo:'linea',linea:'',palabra:''};
+/* Excel en español toma el punto como separador de miles: -119.1148 se pegaría como -1.191.148.
+   Al copiar o exportar, los números se pasan a coma decimal (o a punto) según se elija. */
+var DEC_AUTO=(1.5).toLocaleString().indexOf(',')>=0?'coma':'punto';
+function decimalExcel(v,modo){
+  if(modo==='igual'||typeof v!=='string')return v;
+  var t=v.trim(),m;
+  if(modo==='coma'){
+    if(/^[-+]?\d*\.\d+$/.test(t))return t.replace('.',',');
+    if(/^[-+]?\d{1,3}(,\d{3})+(\.\d+)?$/.test(t))return t.replace(/,/g,'').replace('.',',');
+  }else if(modo==='punto'){
+    if(/^[-+]?\d*,\d+$/.test(t))return t.replace(',','.');
+    if(/^[-+]?\d{1,3}(\.\d{3})+(,\d+)?$/.test(t))return t.replace(/\./g,'').replace(',','.');
+  }
+  return v;
+}
+var PREF_V={modo:'linea',linea:'',palabra:'',dec:DEC_AUTO};
 try{Object.assign(PREF_V,JSON.parse(localStorage.getItem('comparador.valores')||'{}'));}catch(e){}
 function VistaValores(fuentesV,origen,ini){
   var T={tipo:'valores',titulo:'Valores · '+(origen||'archivos'),tip:'Valores extraídos de '+plural(fuentesV.length,'archivo','archivos')};
@@ -2460,6 +2475,9 @@ function VistaValores(fuentesV,origen,ini){
         '<label class="lbl" style="display:flex;align-items:center;gap:6px">Si aparece varias veces <select class="sel-in" data-c="modo"><option value="filas">una fila por valor</option><option value="primero">solo el primero</option><option value="junto">todos en la misma celda</option></select></label>'+
         '<label class="chk" style="align-items:center"><input type="checkbox" data-c="may">Distinguir mayúsculas</label>'+
         '<label class="chk" style="align-items:center"><input type="checkbox" data-c="sin">Incluir archivos sin la palabra</label>'+
+      '</div>'+
+      '<div class="grp">'+
+        '<label class="lbl" style="display:flex;align-items:center;gap:6px" title="Cómo van los decimales al copiar o exportar. Excel en español usa coma: con punto, -119.11 se pegaría como un número enorme.">Decimales <select class="sel-in" data-c="dec"><option value="coma">con coma (Excel en español)</option><option value="punto">con punto (Excel en inglés)</option><option value="igual">tal cual</option></select></label>'+
       '</div>'+
       '<div class="grp" style="margin-left:auto">'+
         '<button class="btn" data-c="copiar" title="Copiar solo los valores, uno debajo de otro y sin huecos, para pegarlos en Excel (Ctrl+C sin celda elegida)">Copiar para Excel</button>'+
@@ -2598,11 +2616,12 @@ function VistaValores(fuentesV,origen,ini){
     }
     xl.innerHTML=h+'</tr></tfoot></table>';selC=null;
   }
-  function tabla(){return[cab.slice()].concat(filasV.map(function(r){return[r.f.clave?r.f.ruta:r.f.nombre,r.f.donde||''].concat(r.v.map(function(v){return v==null?'':v;}));}));}
+  function dec(){return q('[data-c=dec]').value;}
+  function tabla(conv){return[cab.slice()].concat(filasV.map(function(r){return[r.f.clave?r.f.ruta:r.f.nombre,r.f.donde||''].concat(r.v.map(function(v){return v==null?'':conv?decimalExcel(v,dec()):v;}));}));}
   function tsv(){return tabla().map(function(r){return r.map(function(v){v=String(v);return/[\t\n\r"]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join('\t');}).join('\r\n');}
   /* Para Excel solo van los valores: sin títulos, nombre de archivo ni ubicación, una fila por archivo en el mismo orden */
   function soloValores(){
-    return filasV.map(function(r){return r.v.map(function(v,c){return v==null||(r.raw&&r.raw[c])?'':v;});});
+    return filasV.map(function(r){return r.v.map(function(v,c){return v==null||(r.raw&&r.raw[c])?'':decimalExcel(v,dec());});});
   }
   /* las filas sin ningún valor no se copian, para no pegar huecos en Excel */
   function filasConValor(){return soloValores().filter(function(r){return r.some(function(v){return v!=='';});});}
@@ -2619,12 +2638,14 @@ function VistaValores(fuentesV,origen,ini){
     else if(b.dataset.c==='copiar')copiarTodo();
     else if(b.dataset.c==='csv'){
       if(!filasV.length){toast('Primero extrae algún valor.');return;}
-      var txt='﻿'+tabla().map(function(r){return r.map(function(v){v=String(v);return/[;"\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(';');}).join('\r\n');
+      var txt='﻿'+tabla(true).map(function(r){return r.map(function(v){v=String(v);return/[;"\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(';');}).join('\r\n');
       descargar(new TextEncoder().encode(txt),'valores_'+pals.join('_')+'.csv','text/csv');
     }
   });
   inP.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();ir();}};
   selPor.onchange=function(){filasV=[];cab=[];xl.innerHTML='<div class="vacio"></div>';est.innerHTML='';ponerModo(selPor.value);recordar();inP.focus();};
+  q('[data-c=dec]').value=PREF_V.dec||DEC_AUTO;
+  q('[data-c=dec]').onchange=function(){PREF_V.dec=this.value;try{localStorage.setItem('comparador.valores',JSON.stringify(PREF_V));}catch(e){}};
   q('[data-c=modo]').onchange=q('[data-c=may]').onchange=q('[data-c=sin]').onchange=function(){if(filasV.length||pals.length)ir();};
   xl.addEventListener('mousedown',function(e){
     var td=e.target.closest('td[data-c],th[data-c]');if(!td)return;

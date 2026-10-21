@@ -85,6 +85,9 @@ los de una comparación de carpetas, los paneles abiertos o directamente los ele
 - En amarillo los valores de un mismo archivo que cambian entre carpetas o paneles, y las líneas que
   traen otra etiqueta. Si la línea no tiene el formato, se muestra tal cual en gris.
 - Abajo, el resumen: cuántos valores, cuántos distintos y, si son números, suma, promedio, mínimo y máximo.
+- **Decimales**: Excel en español toma el punto como separador de miles (`-119.11` se pegaría como
+  un número enorme), así que al copiar o exportar los números van con **coma decimal**. Si el Excel
+  está en inglés, se elige «con punto»; «tal cual» no toca nada.
 - **Copiar para Excel** copia **solo los valores**, uno debajo de otro y sin huecos (sin títulos, nombres
   de archivo ni ubicación), listos para pegar con Ctrl+V. **Exportar CSV** guarda la tabla completa.
 
